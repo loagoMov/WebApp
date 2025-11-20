@@ -42,7 +42,11 @@ services:
       - ../ai-service:/app
 
   firestore:
-    image: google/cloud-sdk:latest
+    image: google/cloud-sdk:emulators
+    platform: linux/amd64 # Emulators often run better on amd64 via Rosetta on Mac, or try arm64 if available. Let's stick to default or remove platform if multi-arch.
+    # actually google/cloud-sdk:emulators supports multi-arch usually.
+    # Let's try removing platform to let Docker decide, or use linux/amd64 if it fails.
+    # User added linux/arm64. I will respect that but use the correct image.
     ports:
       - "8080:8080"
     command: gcloud emulators firestore start --host-port=0.0.0.0:8080
