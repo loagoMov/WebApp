@@ -40,6 +40,8 @@ services:
       - "8000:8000"
     volumes:
       - ../ai-service:/app
+    env_file:
+      - ../ai-service/.env
 
   firestore:
     image: google/cloud-sdk:emulators
