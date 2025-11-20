@@ -20,7 +20,7 @@ resource "google_firestore_database" "database" {
 }
 
 resource "google_cloud_run_service" "backend" {
-  name     = "coverbots-backend"
+  name     = "${var.app_name}-backend-${var.environment}"
   location = var.region
 
   template {
@@ -29,7 +29,7 @@ resource "google_cloud_run_service" "backend" {
         image = "gcr.io/${var.project_id}/backend:latest"
         env {
             name = "NODE_ENV"
-            value = "production"
+            value = var.environment == "prod" ? "production" : "development"
         }
       }
     }
@@ -43,7 +43,7 @@ resource "google_cloud_run_service" "backend" {
 }
 
 resource "google_cloud_run_service" "ai_service" {
-  name     = "coverbots-ai-service"
+  name     = "${var.app_name}-ai-service-${var.environment}"
   location = var.region
 
   template {

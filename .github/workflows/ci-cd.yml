@@ -2,53 +2,80 @@ name: CI/CD Pipeline
 
 on:
   push:
-    branches: [ main ]
+    branches: [ main, develop ]
   pull_request:
-    branches: [ main ]
+    branches: [ main, develop ]
 
 jobs:
   test-frontend:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v3
-    - name: Use Node.js
-      uses: actions/setup-node@v3
-      with:
-        node-version: '18.x'
-    - run: npm ci
-      working-directory: ./frontend
-    - run: npm run build
-      working-directory: ./frontend
-    # - run: npm test # Uncomment when tests are added
+      - uses: actions/checkout@v3
+      - name: Use Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '20'
+      - name: Install Dependencies
+        run: cd frontend && npm install
+      # - name: Run Tests
+      #   run: cd frontend && npm test
 
   test-backend:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v3
-    - name: Use Node.js
-      uses: actions/setup-node@v3
-      with:
-        node-version: '18.x'
-    - run: npm ci
-      working-directory: ./backend
-    # - run: npm test # Uncomment when tests are added
+      - uses: actions/checkout@v3
+      - name: Use Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '20'
+      - name: Install Dependencies
+        run: cd backend && npm install
+      # - name: Run Tests
+      #   run: cd backend && npm test
 
   test-ai-service:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v3
-    - name: Set up Python
-      uses: actions/setup-python@v4
-      with:
-        python-version: '3.9'
-    - run: pip install -r requirements.txt
-      working-directory: ./ai-service
-    # - run: pytest # Uncomment when tests are added
+      - uses: actions/checkout@v3
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+      - name: Install Dependencies
+        run: cd ai-service && pip install -r requirements.txt
+      # - name: Run Tests
+      #   run: cd ai-service && pytest
 
-  deploy:
+  deploy-staging:
+    needs: [test-frontend, test-backend, test-ai-service]
+    if: github.ref == 'refs/heads/develop'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v1
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v2
+      - name: Terraform Init
+        run: cd infra && terraform init
+      - name: Terraform Apply (Staging)
+        run: cd infra && terraform apply -auto-approve -var-file="environments/staging.tfvars"
+
+  deploy-prod:
     needs: [test-frontend, test-backend, test-ai-service]
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     steps:
-      - name: Deploy to Production (Placeholder)
-        run: echo "Deploying to GCP..."
+      - uses: actions/checkout@v3
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v1
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v2
+      - name: Terraform Init
+        run: cd infra && terraform init
+      - name: Terraform Apply (Production)
+        run: cd infra && terraform apply -auto-approve -var-file="environments/prod.tfvars"

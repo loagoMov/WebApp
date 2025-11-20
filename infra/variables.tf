@@ -8,3 +8,15 @@ variable "region" {
   type        = string
   default     = "us-central1"
 }
+
+variable "environment" {
+  description = "The deployment environment (staging or prod)"
+  type        = string
+  default     = "staging"
+}
+
+variable "app_name" {
+  description = "The application name"
+  type        = string
+  default     = "coverbots"
+}
