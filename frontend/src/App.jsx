@@ -7,6 +7,13 @@ import QuizPage from './pages/QuizPage';
 import ResultsPage from './pages/ResultsPage';
 import VendorDashboard from './pages/VendorDashboard';
 import AdminDashboard from './pages/AdminDashboard';
+import VendorLogin from './pages/VendorLogin';
+import AdminLogin from './pages/AdminLogin';
+import Profile from './pages/Profile';
+import PricingPage from './pages/PricingPage';
+import VendorPricingPage from './pages/VendorPricingPage';
+import SubscriptionSuccess from './pages/SubscriptionSuccess';
+import ProtectedAdminRoute from './components/ProtectedAdminRoute';
 
 function App() {
   return (
@@ -18,8 +25,17 @@ function App() {
           <Route path="/quiz" element={<QuizPage />} />
           <Route path="/results" element={<ResultsPage />} />
           <Route path="/vendor/dashboard" element={<VendorDashboard />} />
-          <Route path="/admin/dashboard" element={<AdminDashboard />} />
-          <Route path="/vendor/login" element={<div className="p-10 text-center">Vendor Login (Coming Soon)</div>} />
+          <Route path="/admin/dashboard" element={
+            <ProtectedAdminRoute>
+              <AdminDashboard />
+            </ProtectedAdminRoute>
+          } />
+          <Route path="/vendor/login" element={<VendorLogin />} />
+          <Route path="/admin/login" element={<AdminLogin />} />
+          <Route path="/profile" element={<Profile />} />
+          <Route path="/pricing" element={<PricingPage />} />
+          <Route path="/vendor/pricing" element={<VendorPricingPage />} />
+          <Route path="/subscription/success" element={<SubscriptionSuccess />} />
         </Routes>
       </main>
       <Footer />

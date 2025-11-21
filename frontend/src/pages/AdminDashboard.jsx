@@ -1,13 +1,27 @@
 import React from 'react';
+import { useAuth0 } from '@auth0/auth0-react';
 
 const AdminDashboard = () => {
+    const { user, logout } = useAuth0();
+
     return (
         <div className="min-h-screen bg-gray-100">
             <div className="bg-gray-800 text-white shadow">
                 <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
                     <div className="flex h-16 justify-between items-center">
-                        <h1 className="text-2xl font-bold">CoverBots Admin</h1>
-                        <button className="text-sm text-gray-300 hover:text-white">Logout</button>
+                        <div className="flex items-center">
+                            <h1 className="text-2xl font-bold mr-4">CoverBots Admin</h1>
+                            <span className="text-xs bg-red-900 text-red-200 px-2 py-1 rounded">Restricted</span>
+                        </div>
+                        <div className="flex items-center space-x-4">
+                            <span className="text-sm text-gray-300">{user?.email}</span>
+                            <button
+                                onClick={() => logout({ logoutParams: { returnTo: window.location.origin + '/admin/login' } })}
+                                className="text-sm text-gray-300 hover:text-white border border-gray-600 px-3 py-1 rounded hover:bg-gray-700"
+                            >
+                                Logout
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>

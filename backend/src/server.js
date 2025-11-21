@@ -8,9 +8,18 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// Webhook route must be defined BEFORE express.json() to access raw body
+app.use('/api/subscriptions', require('./routes/subscriptions'));
+
 // Middleware
 app.use(cors());
-app.use(express.json());
+app.use((req, res, next) => {
+    if (req.originalUrl === '/api/subscriptions/webhook') {
+        next();
+    } else {
+        express.json()(req, res, next);
+    }
+});
 
 // Public Routes
 app.get('/', (req, res) => {
