@@ -32,12 +32,35 @@ const QuizPage = () => {
     const nextStep = () => setStep(prev => prev + 1);
     const prevStep = () => setStep(prev => prev - 1);
 
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
-        // TODO: Send to backend
-        console.log("Submitting quiz:", formData);
-        // Navigate to results (mock)
-        navigate('/results', { state: { recommendations: [] } }); // We'll implement results page next
+
+        try {
+            // Construct query from form data
+            const query = `I am looking for ${formData.category} insurance. I am ${formData.age} years old, earning ${formData.income} BWP/month. My budget is ${formData.budget} BWP.`;
+
+            const response = await fetch('http://localhost:3000/api/recommend', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    user_profile: formData,
+                    query: query
+                }),
+            });
+
+            if (!response.ok) {
+                throw new Error('Failed to fetch recommendations');
+            }
+
+            const data = await response.json();
+            // Navigate to results with data
+            navigate('/results', { state: { recommendations: data.recommendations } });
+        } catch (error) {
+            console.error("Error getting recommendations:", error);
+            alert("Sorry, we couldn't generate recommendations at this time. Please try again.");
+        }
     };
 
     const renderStep1 = () => (

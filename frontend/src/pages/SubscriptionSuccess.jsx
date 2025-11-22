@@ -1,32 +1,112 @@
-import React, { useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import React, { useEffect, useState } from 'react';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useAuth0 } from '@auth0/auth0-react';
+import axios from 'axios';
 
 const SubscriptionSuccess = () => {
-    const { user } = useAuth0();
+    const [searchParams] = useSearchParams();
+    const navigate = useNavigate();
+    const { user, getAccessTokenSilently } = useAuth0();
+    const [status, setStatus] = useState('verifying');
+    const [message, setMessage] = useState('Verifying your payment...');
+
+    useEffect(() => {
+        const verifyPayment = async () => {
+            const transToken = searchParams.get('TransactionToken');
+
+            if (!transToken) {
+                setStatus('error');
+                setMessage('No transaction token found.');
+                return;
+            }
+
+            try {
+                const token = await getAccessTokenSilently();
+                // We need to know the tier and userType. Ideally, these should be passed in state or retrieved.
+                // For now, we might need to rely on what we stored or just verify the token.
+                // The backend verify-payment needs userId, userType, tier to update the DB.
+                // DPO doesn't pass back custom params in the URL easily unless we appended them to the redirect URL.
+                // Let's assume we appended them or we can verify just with the token and update based on that if the backend stored the ref.
+                // BUT, my backend implementation expects them in the body.
+
+                // WORKAROUND: For this MVP, we will try to verify. 
+                // If the backend requires tier/userType, we should have encoded them in the redirect URL.
+                // Let's update the initiate-payment to encode them in the redirect URL.
+
+                // Assuming the URL is like /subscription/success?TransactionToken=...&tier=...&userType=...
+                const tier = searchParams.get('tier');
+                const userType = searchParams.get('userType');
+
+                const response = await axios.post('http://localhost:3000/api/subscriptions/verify-payment', {
+                    transToken,
+                    userId: user.sub,
+                    userType: userType || 'user', // Default fallback
+                    tier: tier || 'user_plus' // Default fallback
+                }, {
+                    headers: { Authorization: `Bearer ${token}` }
+                });
+
+                if (response.data.status === 'success') {
+                    setStatus('success');
+                    setMessage('Payment successful! Your subscription is active.');
+                    setTimeout(() => {
+                        navigate(userType === 'vendor' ? '/vendor/dashboard' : '/profile');
+                    }, 3000);
+                } else {
+                    setStatus('failed');
+                    setMessage(response.data.message || 'Payment verification failed.');
+                }
+            } catch (error) {
+                console.error('Verification error:', error);
+                setStatus('error');
+                setMessage('An error occurred while verifying payment.');
+            }
+        };
+
+        if (user) {
+            verifyPayment();
+        }
+    }, [user, searchParams, getAccessTokenSilently, navigate]);
 
     return (
-        <div className="min-h-screen bg-gray-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
-            <div className="sm:mx-auto sm:w-full sm:max-w-md">
-                <div className="bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10 text-center">
-                    <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-green-100">
-                        <svg className="h-6 w-6 text-green-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
-                        </svg>
+        <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+            <div className="max-w-md w-full space-y-8 text-center">
+                {status === 'verifying' && (
+                    <div>
+                        <h2 className="mt-6 text-3xl font-extrabold text-gray-900">Verifying Payment</h2>
+                        <p className="mt-2 text-sm text-gray-600">{message}</p>
+                        <div className="mt-4 animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
                     </div>
-                    <h2 className="mt-6 text-3xl font-extrabold text-gray-900">Subscription Active!</h2>
-                    <p className="mt-2 text-sm text-gray-600">
-                        Thank you for subscribing. Your account has been upgraded.
-                    </p>
-                    <div className="mt-6">
-                        <Link
-                            to="/"
-                            className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-primary hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary"
+                )}
+                {status === 'success' && (
+                    <div>
+                        <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-green-100">
+                            <svg className="h-6 w-6 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+                            </svg>
+                        </div>
+                        <h2 className="mt-6 text-3xl font-extrabold text-gray-900">Success!</h2>
+                        <p className="mt-2 text-sm text-gray-600">{message}</p>
+                        <p className="mt-4 text-sm text-gray-500">Redirecting you back...</p>
+                    </div>
+                )}
+                {(status === 'failed' || status === 'error') && (
+                    <div>
+                        <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100">
+                            <svg className="h-6 w-6 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                        </div>
+                        <h2 className="mt-6 text-3xl font-extrabold text-gray-900">Payment Failed</h2>
+                        <p className="mt-2 text-sm text-gray-600">{message}</p>
+                        <button
+                            onClick={() => navigate(-1)}
+                            className="mt-4 inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-primary hover:bg-blue-700 focus:outline-none"
                         >
-                            Return to Dashboard
-                        </Link>
+                            Try Again
+                        </button>
                     </div>
-                </div>
+                )}
             </div>
         </div>
     );

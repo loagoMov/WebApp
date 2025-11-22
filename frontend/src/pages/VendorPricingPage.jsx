@@ -37,27 +37,27 @@ const VendorPricingPage = () => {
 
     const tiers = [
         {
-            name: 'Bronze Shield',
+            name: 'Starter',
             price: 'BWP 499/mo',
             priceId: 'price_bronze_id',
             features: ['3 Product Listings', 'Basic Analytics', 'General Search Visibility', 'Limited Bidding'],
-            buttonText: 'Start Bronze',
+            buttonText: 'Start Starter',
             recommended: false
         },
         {
-            name: 'Silver Guard',
+            name: 'Growth',
             price: 'BWP 1299/mo',
             priceId: 'price_silver_id',
             features: ['10 Product Listings', 'Priority AI Placement', 'Advanced Analytics', 'Unlimited Bidding'],
-            buttonText: 'Go Silver',
+            buttonText: 'Go Growth',
             recommended: true
         },
         {
-            name: 'Gold Sentinel',
+            name: 'Dominion',
             price: 'BWP 2999/mo',
             priceId: 'price_gold_id',
             features: ['Unlimited Listings', 'Premium Featured Spots', 'Full Analytics Suite', 'AI Pricing Suggestions', 'Dedicated Support'],
-            buttonText: 'Go Gold',
+            buttonText: 'Go Dominion',
             recommended: false
         }
     ];

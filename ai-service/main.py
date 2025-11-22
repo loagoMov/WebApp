@@ -47,10 +47,21 @@ def get_recommendations(request: RecommendationRequest):
         context_chunks = search_results['documents'][0]
         
         # 2. Generate answer
-        recommendation = llm.generate_recommendation(request.user_profile, context_chunks)
+        recommendation_str = llm.generate_recommendation(request.user_profile, context_chunks)
         
+        # Try to parse JSON
+        import json
+        try:
+            # Clean up potential markdown code blocks
+            clean_str = recommendation_str.replace("```json", "").replace("```", "").strip()
+            recommendation_data = json.loads(clean_str)
+        except json.JSONDecodeError:
+            # Fallback if LLM fails to return JSON
+            recommendation_data = []
+            print(f"Failed to parse JSON: {recommendation_str}")
+
         return {
-            "recommendation": recommendation,
+            "recommendations": recommendation_data,
             "context_used": context_chunks
         }
     except Exception as e:

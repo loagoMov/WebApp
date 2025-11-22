@@ -37,7 +37,7 @@ const PricingPage = () => {
 
     const tiers = [
         {
-            name: 'LiteCover',
+            name: 'Free',
             price: 'Free',
             priceId: 'price_lite_id', // Replace with actual Stripe Price ID
             features: ['Compare 3 policies', 'Save 5 quotes', 'Standard AI recommendations'],
@@ -45,7 +45,7 @@ const PricingPage = () => {
             recommended: false
         },
         {
-            name: 'CoverPlus',
+            name: 'SmartPlan',
             price: 'BWP 99/mo',
             priceId: 'price_plus_id',
             features: ['Unlimited comparisons', 'Unlimited saved quotes', 'Savings suggestions', 'Early access'],
@@ -53,7 +53,7 @@ const PricingPage = () => {
             recommended: true
         },
         {
-            name: 'UltimateCover',
+            name: 'ElitePlan',
             price: 'BWP 199/mo',
             priceId: 'price_ultimate_id',
             features: ['Advanced financial planning', 'Risk assessment', 'Priority support', 'Family profiles'],

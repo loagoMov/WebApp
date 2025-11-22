@@ -1,8 +1,15 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useLocation, Link } from 'react-router-dom';
+import { useAuth0 } from '@auth0/auth0-react';
+import axios from 'axios';
 
 const ResultsPage = () => {
     const location = useLocation();
+    const { user, getAccessTokenSilently, isAuthenticated } = useAuth0();
+    const [subscription, setSubscription] = useState(null);
+    const [selectedForCompare, setSelectedForCompare] = useState([]);
+    const [savingQuoteId, setSavingQuoteId] = useState(null);
+
     // Mock data if no state passed (for direct access)
     const recommendations = location.state?.recommendations || [
         {
@@ -52,6 +59,63 @@ const ResultsPage = () => {
         }
     ];
 
+    useEffect(() => {
+        const fetchSubscription = async () => {
+            if (user) {
+                try {
+                    const response = await axios.get(`http://localhost:3000/api/subscriptions/status/${user.sub}`);
+                    setSubscription(response.data);
+                } catch (error) {
+                    console.error('Error fetching subscription:', error);
+                    // Fallback to free tier limits
+                    setSubscription({ limits: { compare: 3, save: 5 } });
+                }
+            }
+        };
+        fetchSubscription();
+    }, [user]);
+
+    const handleCompareToggle = (product) => {
+        const isSelected = selectedForCompare.find(p => p.id === product.id);
+        if (isSelected) {
+            setSelectedForCompare(prev => prev.filter(p => p.id !== product.id));
+        } else {
+            const limit = subscription?.limits?.compare || 3;
+            if (selectedForCompare.length >= limit) {
+                alert(`You can only compare up to ${limit} policies on your current plan. Upgrade to compare more!`);
+                return;
+            }
+            setSelectedForCompare(prev => [...prev, product]);
+        }
+    };
+
+    const handleSaveQuote = async (product) => {
+        if (!isAuthenticated) {
+            alert('Please log in to save quotes.');
+            return;
+        }
+
+        setSavingQuoteId(product.id);
+        try {
+            const token = await getAccessTokenSilently();
+            await axios.post(`http://localhost:3000/api/quotes/${user.sub}`, product, {
+                headers: {
+                    Authorization: `Bearer ${token}`
+                }
+            });
+            alert('Quote saved successfully!');
+        } catch (error) {
+            console.error('Error saving quote:', error);
+            if (error.response && error.response.status === 403) {
+                alert(`Limit reached: ${error.response.data.error}. Please upgrade your plan.`);
+            } else {
+                alert('Failed to save quote. Please try again.');
+            }
+        } finally {
+            setSavingQuoteId(null);
+        }
+    };
+
     return (
         <div className="min-h-screen bg-gray-50 py-12">
             <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
@@ -60,6 +124,13 @@ const ResultsPage = () => {
                     <p className="mx-auto mt-3 max-w-2xl text-xl text-gray-500 sm:mt-4">
                         Based on your profile, here are the best matches for you.
                     </p>
+                    {selectedForCompare.length > 0 && (
+                        <div className="mt-4">
+                            <button className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                                Compare Selected ({selectedForCompare.length})
+                            </button>
+                        </div>
+                    )}
                 </div>
 
                 <div className="mt-12 grid gap-8 lg:grid-cols-3 lg:gap-x-8">
@@ -71,8 +142,23 @@ const ResultsPage = () => {
                                 </div>
                             )}
                             <div className="flex-1">
-                                <h3 className="text-xl font-semibold text-gray-900">{product.productName}</h3>
-                                <p className="mt-1 text-sm text-gray-500">{product.vendorName}</p>
+                                <div className="flex justify-between items-start">
+                                    <div>
+                                        <h3 className="text-xl font-semibold text-gray-900">{product.productName}</h3>
+                                        <p className="mt-1 text-sm text-gray-500">{product.vendorName}</p>
+                                    </div>
+                                    <div className="flex items-center">
+                                        <input
+                                            id={`compare-${product.id}`}
+                                            name={`compare-${product.id}`}
+                                            type="checkbox"
+                                            checked={!!selectedForCompare.find(p => p.id === product.id)}
+                                            onChange={() => handleCompareToggle(product)}
+                                            className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                                        />
+                                        <label htmlFor={`compare-${product.id}`} className="ml-2 text-sm text-gray-500">Compare</label>
+                                    </div>
+                                </div>
 
                                 <div className="mt-4 flex items-baseline text-gray-900">
                                     <span className="text-4xl font-bold tracking-tight">{product.currency} {product.premium}</span>
@@ -101,12 +187,13 @@ const ResultsPage = () => {
                                     ))}
                                 </ul>
                             </div>
-                            <div className="mt-8">
+                            <div className="mt-8 space-y-3">
                                 <button
                                     className={`w-full rounded-md px-6 py-3 text-base font-medium text-white shadow-sm hover:bg-opacity-90 ${index === 0 ? 'bg-primary hover:bg-blue-700' : 'bg-gray-800 hover:bg-gray-900'}`}
-                                    onClick={() => alert(`Requesting quote for ${product.productName}`)}
+                                    onClick={() => handleSaveQuote(product)}
+                                    disabled={savingQuoteId === product.id}
                                 >
-                                    Request Quote
+                                    {savingQuoteId === product.id ? 'Saving...' : 'Save Quote'}
                                 </button>
                             </div>
                         </div>

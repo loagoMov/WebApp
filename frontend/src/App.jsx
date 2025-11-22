@@ -13,30 +13,39 @@ import Profile from './pages/Profile';
 import PricingPage from './pages/PricingPage';
 import VendorPricingPage from './pages/VendorPricingPage';
 import SubscriptionSuccess from './pages/SubscriptionSuccess';
+import SubscriptionCancel from './pages/SubscriptionCancel';
+import OnboardingPage from './pages/OnboardingPage';
+import AuthWrapper from './components/AuthWrapper';
 import ProtectedAdminRoute from './components/ProtectedAdminRoute';
+
+// ...
 
 function App() {
   return (
     <div className="flex flex-col min-h-screen">
       <Navbar />
       <main className="flex-grow">
-        <Routes>
-          <Route path="/" element={<LandingPage />} />
-          <Route path="/quiz" element={<QuizPage />} />
-          <Route path="/results" element={<ResultsPage />} />
-          <Route path="/vendor/dashboard" element={<VendorDashboard />} />
-          <Route path="/admin/dashboard" element={
-            <ProtectedAdminRoute>
-              <AdminDashboard />
-            </ProtectedAdminRoute>
-          } />
-          <Route path="/vendor/login" element={<VendorLogin />} />
-          <Route path="/admin/login" element={<AdminLogin />} />
-          <Route path="/profile" element={<Profile />} />
-          <Route path="/pricing" element={<PricingPage />} />
-          <Route path="/vendor/pricing" element={<VendorPricingPage />} />
-          <Route path="/subscription/success" element={<SubscriptionSuccess />} />
-        </Routes>
+        <AuthWrapper>
+          <Routes>
+            <Route path="/" element={<LandingPage />} />
+            <Route path="/quiz" element={<QuizPage />} />
+            <Route path="/results" element={<ResultsPage />} />
+            <Route path="/vendor/dashboard" element={<VendorDashboard />} />
+            <Route path="/admin/dashboard" element={
+              <ProtectedAdminRoute>
+                <AdminDashboard />
+              </ProtectedAdminRoute>
+            } />
+            <Route path="/vendor/login" element={<VendorLogin />} />
+            <Route path="/admin/login" element={<AdminLogin />} />
+            <Route path="/profile" element={<Profile />} />
+            <Route path="/pricing" element={<PricingPage />} />
+            <Route path="/vendor/pricing" element={<VendorPricingPage />} />
+            <Route path="/subscription/success" element={<SubscriptionSuccess />} />
+            <Route path="/subscription/cancel" element={<SubscriptionCancel />} />
+            <Route path="/onboarding" element={<OnboardingPage />} />
+          </Routes>
+        </AuthWrapper>
       </main>
       <Footer />
     </div>

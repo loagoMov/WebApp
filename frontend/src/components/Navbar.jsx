@@ -4,8 +4,14 @@ import { useAuth0 } from '@auth0/auth0-react';
 
 import logo from '../assets/logo.png';
 
+import { ADMIN_EMAILS } from './ProtectedAdminRoute';
+
+// ...
+
 const Navbar = () => {
-    const { isAuthenticated } = useAuth0();
+    const { isAuthenticated, user } = useAuth0();
+    const isAdmin = isAuthenticated && user?.email && ADMIN_EMAILS.includes(user.email);
+
     return (
         <nav className="bg-white shadow-sm sticky top-0 z-50">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -19,6 +25,11 @@ const Navbar = () => {
                         <Link to="/" className="text-gray-900 hover:text-primary px-3 py-2 rounded-md text-sm font-medium">
                             Home
                         </Link>
+                        {isAdmin && (
+                            <Link to="/admin/dashboard" className="text-red-600 hover:text-red-800 px-3 py-2 rounded-md text-sm font-medium">
+                                Admin Dashboard
+                            </Link>
+                        )}
                         <Link
                             to={isAuthenticated ? "/vendor/dashboard" : "/vendor/login"}
                             className="text-gray-500 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium"

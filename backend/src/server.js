@@ -36,6 +36,20 @@ app.use('/api/vendors/:vendorId/products', checkJwt, require('./routes/products'
 app.use('/api/leads', checkJwt, require('./routes/leads')); // For creating leads (user)
 app.use('/api/vendors/:vendorId/leads', checkJwt, require('./routes/leads')); // For viewing leads (vendor)
 app.use('/api/vendors/:vendorId/bids', checkJwt, require('./routes/bids'));
+app.use('/api/quotes', checkJwt, require('./routes/quotes'));
+app.use('/api/users', checkJwt, require('./routes/users'));
+
+// AI Service Proxy
+const axios = require('axios');
+app.post('/api/recommend', async (req, res) => {
+    try {
+        const response = await axios.post('http://localhost:8000/recommend', req.body);
+        res.json(response.data);
+    } catch (error) {
+        console.error('AI Service Error:', error.message);
+        res.status(500).json({ error: 'Failed to get recommendations' });
+    }
+});
 
 // Error Handling
 app.use((err, req, res, next) => {

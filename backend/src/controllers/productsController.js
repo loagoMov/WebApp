@@ -5,8 +5,28 @@ const createProduct = async (req, res) => {
         const { vendorId } = req.params;
         const productData = req.body;
 
-        // TODO: Verify that the requesting user owns the vendorId
+        // 1. Fetch Vendor Subscription & Limits
+        const vendorDoc = await db.collection('vendors').doc(vendorId).get();
+        if (!vendorDoc.exists) {
+            return res.status(404).json({ error: 'Vendor not found' });
+        }
+        const vendorData = vendorDoc.data();
+        const productLimit = vendorData.productLimit || 3; // Default to 3 (Starter)
 
+        // 2. Count Existing Products
+        const productsSnapshot = await db.collection('insurance_products').where('vendorId', '==', vendorId).get();
+        const currentCount = productsSnapshot.size;
+
+        if (currentCount >= productLimit) {
+            return res.status(403).json({
+                error: 'Product limit reached',
+                limit: productLimit,
+                current: currentCount,
+                upgradeRequired: true
+            });
+        }
+
+        // 3. Create Product
         const newProduct = {
             vendorId,
             ...productData,

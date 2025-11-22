@@ -4,10 +4,11 @@ import { Navigate } from 'react-router-dom';
 
 // Hardcoded list of allowed admin emails
 // In a real production app, this should be handled via Auth0 Roles/Permissions
-const ADMIN_EMAILS = [
+export const ADMIN_EMAILS = [
     'admin@coverbots.bw',
     'loagomontsho@gmail.com',
-    'coverbotsbw@gmail.com', // Adding a likely user email for testing purposes, can be removed
+    'coverbotsbw@gmail.com',
+    'montsholoago100@gmail.com', // Added for testing
 ];
 
 const ProtectedAdminRoute = ({ children }) => {
