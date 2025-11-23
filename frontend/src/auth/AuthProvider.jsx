@@ -28,6 +28,8 @@ const AuthProvider = ({ children }) => {
                 audience: audience,
             }}
             onRedirectCallback={onRedirectCallback}
+            useRefreshTokens={true}
+            cacheLocation="localstorage"
         >
             {children}
         </Auth0Provider>

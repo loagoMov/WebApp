@@ -1,6 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth0 } from '@auth0/auth0-react';
+import { useUser } from '../context/UserContext';
 
 import logo from '../assets/logo.png';
 
@@ -10,6 +11,7 @@ import { ADMIN_EMAILS } from './ProtectedAdminRoute';
 
 const Navbar = () => {
     const { isAuthenticated, user } = useAuth0();
+    const { userProfile } = useUser();
     const isAdmin = isAuthenticated && user?.email && ADMIN_EMAILS.includes(user.email);
 
     return (
@@ -33,12 +35,27 @@ const Navbar = () => {
                                 Admin Dashboard
                             </Link>
                         )}
-                        <Link
-                            to={isAuthenticated ? "/vendor/dashboard" : "/vendor/login"}
-                            className="text-gray-500 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium"
-                        >
-                            {isAuthenticated ? "Vendor Portal" : "Vendor Login"}
-                        </Link>
+
+                        {/* Show Vendor Portal only if user is a vendor */}
+                        {userProfile?.role === 'vendor' && (
+                            <Link
+                                to="/vendor/dashboard"
+                                className="text-gray-500 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium"
+                            >
+                                Vendor Portal
+                            </Link>
+                        )}
+
+                        {/* Show "Become a Vendor" if not logged in or not a vendor */}
+                        {(!isAuthenticated || (userProfile && userProfile.role !== 'vendor')) && (
+                            <Link
+                                to={isAuthenticated ? "/vendor/register" : "/vendor/register"}
+                                className="text-gray-500 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium"
+                            >
+                                Become a Vendor
+                            </Link>
+                        )}
+
                         <Link to="/quiz" className="bg-primary text-white hover:bg-blue-700 px-4 py-2 rounded-md text-sm font-medium transition-colors">
                             Get Recommended
                         </Link>
@@ -70,12 +87,20 @@ const AuthButtons = () => {
     }
 
     return (
-        <button
-            onClick={() => loginWithRedirect()}
-            className="text-gray-500 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium"
-        >
-            Log In
-        </button>
+        <>
+            <button
+                onClick={() => loginWithRedirect()}
+                className="text-gray-500 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium"
+            >
+                Log In
+            </button>
+            <Link
+                to="/register"
+                className="bg-gray-100 text-gray-900 hover:bg-gray-200 px-3 py-2 rounded-md text-sm font-medium ml-2"
+            >
+                Register
+            </Link>
+        </>
     );
 };
 

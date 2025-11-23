@@ -4,12 +4,14 @@ import axios from 'axios';
 import { db, storage } from '../config/firebase';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import CountryCodeSelect from '../components/CountryCodeSelect';
 
 const Profile = () => {
     const { user, isAuthenticated, isLoading, getAccessTokenSilently, logout } = useAuth0();
     const [formData, setFormData] = useState({
         fullName: '',
         email: '',
+        countryCode: '+267',
         phone: '',
         location: '',
         photoURL: ''
@@ -32,6 +34,7 @@ const Profile = () => {
                     setFormData({
                         fullName: data.fullName || user.name || '',
                         email: user.email || '',
+                        countryCode: '+267', // Default, or logic to extract if needed
                         phone: data.phone || '',
                         location: data.location || '',
                         photoURL: data.photoURL || user.picture || ''
@@ -41,6 +44,7 @@ const Profile = () => {
                     setFormData({
                         fullName: user.name || '',
                         email: user.email || '',
+                        countryCode: '+267',
                         phone: '',
                         location: '',
                         photoURL: user.picture || ''
@@ -79,19 +83,49 @@ const Profile = () => {
         }
     };
 
+    const handleUseLocation = () => {
+        if (!navigator.geolocation) {
+            alert("Geolocation is not supported by your browser");
+            return;
+        }
+
+        navigator.geolocation.getCurrentPosition(async (position) => {
+            try {
+                const { latitude, longitude } = position.coords;
+                const response = await axios.get(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`);
+                const address = response.data.address;
+                const city = address.city || address.town || address.village || address.state || '';
+
+                if (city) {
+                    setFormData(prev => ({ ...prev, location: city }));
+                } else {
+                    alert("Could not determine city from your location.");
+                }
+            } catch (error) {
+                console.error("Error getting location:", error);
+                alert("Failed to get location details.");
+            }
+        }, (error) => {
+            console.error("Geolocation error:", error);
+            alert("Unable to retrieve your location. Please enter it manually.");
+        });
+    };
+
     const handleSubmit = async (e) => {
-        e.preventDefault(); // Keep preventDefault for form submission
+        e.preventDefault();
         if (!user) return;
         setUploading(true);
 
         try {
             const token = await getAccessTokenSilently();
-            const apiFormData = new FormData(); // Renamed to avoid conflict with state variable
+            const apiFormData = new FormData();
             apiFormData.append('fullName', formData.fullName);
-            apiFormData.append('phone', formData.phone);
+
+            const fullPhone = formData.phone.startsWith('+') ? formData.phone : `${formData.countryCode}${formData.phone}`;
+            apiFormData.append('phone', fullPhone);
             apiFormData.append('location', formData.location);
 
-            if (file) { // Use 'file' state variable
+            if (file) {
                 apiFormData.append('photo', file);
             }
 
@@ -102,11 +136,8 @@ const Profile = () => {
                 }
             });
 
-            // Update local state with returned data
             setFormData(prev => ({ ...prev, ...formData, photoURL: response.data.photoURL || prev.photoURL }));
-            // setPhotoPreview(response.data.photoURL || photoPreview); // This line is not needed as photoURL is already updated in formData
-
-            setIsEditing(false); // Set editing to false after successful save
+            setIsEditing(false);
             alert('Profile updated successfully!');
         } catch (error) {
             console.error("Error updating profile:", error);
@@ -117,29 +148,7 @@ const Profile = () => {
     };
 
     const handleManageSubscription = async () => {
-        try {
-            const token = await getAccessTokenSilently();
-            // For now, we'll just simulate an upgrade to "Plus" plan for demonstration
-            // In a real UI, you'd have a modal to select the plan
-            const response = await axios.post('http://localhost:3000/api/subscriptions/initiate-payment', {
-                tier: 'user_plus',
-                userId: user.sub,
-                userType: 'user',
-                redirectUrl: window.location.href, // Redirect back to profile after payment
-                backUrl: window.location.href
-            }, {
-                headers: { Authorization: `Bearer ${token}` }
-            });
-
-            if (response.data.paymentUrl) {
-                window.location.href = response.data.paymentUrl;
-            } else {
-                alert('Failed to initiate payment');
-            }
-        } catch (error) {
-            console.error('Error initiating payment:', error);
-            alert('Failed to redirect to payment gateway.');
-        }
+        window.location.href = '/pricing';
     };
 
     const handleDeleteAccount = async () => {
@@ -225,25 +234,46 @@ const Profile = () => {
                             </div>
                             <div>
                                 <label htmlFor="phone" className="block text-sm font-medium text-gray-700">Contact Number</label>
-                                <input
-                                    type="tel"
-                                    name="phone"
-                                    id="phone"
-                                    value={formData.phone}
-                                    onChange={handleChange}
-                                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-primary focus:border-primary sm:text-sm"
-                                />
+                                <div className="mt-1 flex rounded-md shadow-sm">
+                                    <CountryCodeSelect
+                                        value={formData.countryCode}
+                                        onChange={handleChange}
+                                        name="countryCode"
+                                    />
+                                    <input
+                                        type="tel"
+                                        name="phone"
+                                        id="phone"
+                                        value={formData.phone}
+                                        onChange={handleChange}
+                                        className="block w-full flex-1 rounded-none rounded-r-md border-gray-300 focus:border-primary focus:ring-primary sm:text-sm p-2 border"
+                                        placeholder="71234567"
+                                    />
+                                </div>
                             </div>
                             <div>
                                 <label htmlFor="location" className="block text-sm font-medium text-gray-700">Location</label>
-                                <input
-                                    type="text"
-                                    name="location"
-                                    id="location"
-                                    value={formData.location}
-                                    onChange={handleChange}
-                                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-primary focus:border-primary sm:text-sm"
-                                />
+                                <div className="mt-1 flex rounded-md shadow-sm">
+                                    <input
+                                        type="text"
+                                        name="location"
+                                        id="location"
+                                        value={formData.location}
+                                        onChange={handleChange}
+                                        className="block w-full flex-1 rounded-none rounded-l-md border-gray-300 focus:border-primary focus:ring-primary sm:text-sm p-2 border"
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={handleUseLocation}
+                                        className="relative -ml-px inline-flex items-center space-x-2 rounded-r-md border border-gray-300 bg-gray-50 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+                                    >
+                                        <svg className="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                                        </svg>
+                                        <span>Locate Me</span>
+                                    </button>
+                                </div>
                             </div>
 
                             <div className="flex justify-between items-center">

@@ -19,6 +19,10 @@ import AuthWrapper from './components/AuthWrapper';
 import ProtectedAdminRoute from './components/ProtectedAdminRoute';
 import AuthProvider from './auth/AuthProvider';
 import LoginPage from './pages/LoginPage';
+import RegisterPage from './pages/RegisterPage';
+import VendorRegisterPage from './pages/VendorRegisterPage';
+import VendorCompleteRegistration from './pages/VendorCompleteRegistration';
+import InactivityHandler from './components/InactivityHandler';
 import AboutPage from './pages/AboutPage';
 
 function App() {
@@ -47,8 +51,12 @@ function App() {
             <Route path="/subscription/success" element={<SubscriptionSuccess />} />
             <Route path="/subscription/cancel" element={<SubscriptionCancel />} />
             <Route path="/onboarding" element={<OnboardingPage />} />
+            <Route path="/register" element={<RegisterPage />} />
+            <Route path="/vendor/register" element={<VendorRegisterPage />} />
+            <Route path="/vendor/complete-registration" element={<VendorCompleteRegistration />} />
           </Routes>
         </AuthWrapper>
+        <InactivityHandler />
       </main>
       <Footer />
     </div>

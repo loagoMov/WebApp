@@ -44,7 +44,12 @@ def get_recommendations(request: RecommendationRequest):
     try:
         # 1. Retrieve relevant chunks
         search_results = rag.query(request.query)
-        context_chunks = search_results['documents'][0]
+        
+        context_chunks = []
+        if search_results and 'documents' in search_results and search_results['documents']:
+             # Check if the first list in documents is not empty (Chroma returns list of lists)
+             if len(search_results['documents']) > 0 and len(search_results['documents'][0]) > 0:
+                context_chunks = search_results['documents'][0]
         
         # 2. Generate answer
         recommendation_str = llm.generate_recommendation(request.user_profile, context_chunks)
@@ -65,5 +70,8 @@ def get_recommendations(request: RecommendationRequest):
             "context_used": context_chunks
         }
     except Exception as e:
+        import traceback
+        traceback.print_exc()
+        print(f"Error generating recommendations: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 

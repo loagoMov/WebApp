@@ -1,0 +1,77 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Helper function to check if user is authenticated
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    // Helper function to check if user is accessing their own document
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    // Helper function to check for specific roles (requires Custom Claims or Firestore field check)
+    // For MVP, we'll assume role is stored in the user document or token
+    function hasRole(role) {
+      return isAuthenticated() && request.auth.token.role == role;
+    }
+
+    // -------------------------------
+    // USERS COLLECTION
+    // -------------------------------
+    match /users/{userId} {
+      // Users can read and write their own profile
+      // Admins can read/write any profile
+      allow read, write: if isOwner(userId) || hasRole('admin');
+    }
+
+    // -------------------------------
+    // PRODUCTS COLLECTION
+    // -------------------------------
+    match /products/{productId} {
+      // Anyone can read products (public catalog)
+      allow read: if true;
+      
+      // Only vendors and admins can create/update products
+      // Note: In a real app, you'd verify the vendor owns the product
+      allow write: if hasRole('vendor') || hasRole('admin');
+    }
+
+    // -------------------------------
+    // VENDORS COLLECTION (Profiles)
+    // -------------------------------
+    match /vendors/{vendorId} {
+      // Public read for vendor profiles
+      allow read: if true;
+      
+      // Only the vendor themselves or admin can update
+      allow write: if isOwner(vendorId) || hasRole('admin');
+    }
+
+    // -------------------------------
+    // SUBSCRIPTIONS COLLECTION
+    // -------------------------------
+    match /subscriptions/{subscriptionId} {
+      // Users can read their own subscriptions
+      allow read: if isAuthenticated() && (resource.data.userId == request.auth.uid || hasRole('admin'));
+      
+      // Only backend (via Admin SDK) usually writes subscriptions, 
+      // but if frontend needs to create intent:
+      allow write: if isAuthenticated(); 
+    }
+
+    // -------------------------------
+    // LEADS/QUOTES COLLECTION
+    // -------------------------------
+    match /leads/{leadId} {
+       allow read, write: if isAuthenticated();
+    }
+
+    // Default deny for everything else
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

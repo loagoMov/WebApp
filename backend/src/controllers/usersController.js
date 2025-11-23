@@ -4,7 +4,7 @@ const managementClient = require('../config/auth0');
 const updateProfile = async (req, res) => {
     try {
         const { userId } = req.params;
-        const { fullName, phone, location, role } = req.body;
+        const { fullName, phone, location, role, companyName, taxId } = req.body;
         const file = req.file;
 
         let photoURL = null;
@@ -40,6 +40,9 @@ const updateProfile = async (req, res) => {
             updatedAt: new Date().toISOString()
         };
 
+        if (companyName) updateData.companyName = companyName;
+        if (taxId) updateData.taxId = taxId;
+
         if (role !== undefined) {
             updateData.role = role;
         }
@@ -49,6 +52,7 @@ const updateProfile = async (req, res) => {
         }
 
         await userRef.set(updateData, { merge: true });
+        console.log(`Successfully wrote profile data for user ${userId} to Firestore`);
 
         res.json({ message: 'Profile updated successfully', photoURL });
     } catch (error) {
@@ -89,7 +93,8 @@ const deleteUser = async (req, res) => {
                 await managementClient.users.delete({ id: userId });
                 console.log(`User ${userId} deleted from Auth0`);
             } catch (auth0Error) {
-                console.error('Error deleting user from Auth0:', auth0Error);
+                console.error('Error deleting user from Auth0:', auth0Error.message);
+                console.warn('Ensure the Auth0 Client has "Client Credentials" grant and access to Management API.');
                 // We don't fail the request if Auth0 deletion fails, but we log it.
             }
         } else {

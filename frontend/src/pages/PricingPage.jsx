@@ -4,33 +4,42 @@ import { useAuth0 } from '@auth0/auth0-react';
 const PricingPage = () => {
     const { user, isAuthenticated, loginWithRedirect } = useAuth0();
 
-    const handleSubscribe = async (priceId) => {
+    const handleSubscribe = async (tier) => {
         if (!isAuthenticated) {
             loginWithRedirect();
             return;
         }
 
+        if (tier === 'basic') {
+            // Free tier logic (if any) or just redirect
+            alert("You are on the Free plan.");
+            return;
+        }
+
         try {
-            const response = await fetch('http://localhost:3000/api/subscriptions/create-checkout-session', {
+            const response = await fetch('http://localhost:3000/api/subscriptions/initiate-payment', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({
-                    priceId,
+                    tier: tier, // 'premium' or 'vendor_basic' etc.
                     userId: user.sub,
                     userType: 'user',
-                    successUrl: `${window.location.origin}/subscription/success`,
-                    cancelUrl: window.location.href,
+                    email: user.email,
+                    firstName: user.given_name || user.name,
+                    lastName: user.family_name || ''
                 }),
             });
 
-            const { url } = await response.json();
-            if (url) {
-                window.location.href = url;
+            const data = await response.json();
+            if (data.paymentURL) {
+                window.location.href = data.paymentURL;
+            } else {
+                alert('Failed to initiate payment: ' + (data.error || 'Unknown error'));
             }
         } catch (error) {
-            console.error('Error creating checkout session:', error);
+            console.error('Error initiating payment:', error);
             alert('Failed to start subscription process.');
         }
     };
@@ -39,23 +48,23 @@ const PricingPage = () => {
         {
             name: 'Free',
             price: 'Free',
-            priceId: 'price_lite_id', // Replace with actual Stripe Price ID
+            tierId: 'basic',
             features: ['Compare 3 policies', 'Save 5 quotes', 'Standard AI recommendations'],
-            buttonText: 'Get Started',
+            buttonText: 'Current Plan',
             recommended: false
         },
         {
             name: 'SmartPlan',
-            price: 'BWP 99/mo',
-            priceId: 'price_plus_id',
+            price: 'BWP 150/mo',
+            tierId: 'premium',
             features: ['Unlimited comparisons', 'Unlimited saved quotes', 'Savings suggestions', 'Early access'],
             buttonText: 'Subscribe',
             recommended: true
         },
         {
             name: 'ElitePlan',
-            price: 'BWP 199/mo',
-            priceId: 'price_ultimate_id',
+            price: 'BWP 200/mo', // Matching backend TIER_MAP for vendor_basic just for demo, or add new tier
+            tierId: 'vendor_basic', // Using existing backend tier for demo
             features: ['Advanced financial planning', 'Risk assessment', 'Priority support', 'Family profiles'],
             buttonText: 'Subscribe',
             recommended: false
@@ -82,7 +91,7 @@ const PricingPage = () => {
                                 <span className="text-4xl font-extrabold text-gray-900">{tier.price}</span>
                             </p>
                             <button
-                                onClick={() => handleSubscribe(tier.priceId)}
+                                onClick={() => handleSubscribe(tier.tierId)}
                                 className={`mt-8 block w-full py-3 px-6 border border-transparent rounded-md text-center font-medium ${tier.recommended ? 'bg-primary text-white hover:bg-blue-700' : 'bg-blue-50 text-primary hover:bg-blue-100'}`}
                             >
                                 {tier.buttonText}

@@ -16,14 +16,43 @@ const OnboardingPage = () => {
 
     useEffect(() => {
         console.log('OnboardingPage mounted');
-        if (user) {
-            setFormData(prev => ({
-                ...prev,
-                fullName: user.name || '',
-                email: user.email
-            }));
-        }
-    }, [user]);
+        const fetchExistingData = async () => {
+            if (user) {
+                // Pre-fill from Auth0
+                let initialData = {
+                    fullName: user.name || '',
+                    email: user.email,
+                    phone: '',
+                    location: '',
+                    role: 'user'
+                };
+
+                // Try to fetch from Firestore in case they have partial data
+                try {
+                    // We need to import db and doc/getDoc here or use axios if we want to stick to API
+                    // Let's use the API since we have the token
+                    const token = await getAccessTokenSilently();
+                    const response = await axios.get(`http://localhost:3000/api/users/${user.sub}`, {
+                        headers: { Authorization: `Bearer ${token}` }
+                    });
+
+                    if (response.data) {
+                        initialData = { ...initialData, ...response.data };
+                    }
+                } catch (error) {
+                    // Ignore 404 or other errors, just use Auth0 data
+                    console.log('No existing profile data found or error fetching it');
+                }
+
+                setFormData(prev => ({
+                    ...prev,
+                    ...initialData
+                }));
+            }
+        };
+
+        fetchExistingData();
+    }, [user, getAccessTokenSilently]);
 
     const handleChange = (e) => {
         setFormData({ ...formData, [e.target.name]: e.target.value });

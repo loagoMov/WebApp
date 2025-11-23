@@ -6,6 +6,15 @@ const COMPANY_TOKEN = process.env.DPO_COMPANY_TOKEN;
 const SERVICE_TYPE = process.env.DPO_SERVICE_TYPE;
 
 const createToken = async (paymentData) => {
+    if (process.env.MOCK_PAYMENTS === 'true') {
+        console.log('Mocking DPO createToken', paymentData);
+        return {
+            transToken: 'MOCK_TRANS_TOKEN_' + Date.now(),
+            transRef: 'MOCK_TRANS_REF_' + Date.now(),
+            paymentUrl: `${paymentData.redirectUrl}?mock_payment=success` // Direct back to success
+        };
+    }
+
     const date = new Date();
     const formattedDate = `${date.getFullYear()}/${(date.getMonth() + 1).toString().padStart(2, '0')}/${date.getDate().toString().padStart(2, '0')} ${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`;
 
@@ -56,6 +65,18 @@ const createToken = async (paymentData) => {
 };
 
 const verifyToken = async (transToken) => {
+    if (process.env.MOCK_PAYMENTS === 'true') {
+        console.log('Mocking DPO verifyToken', transToken);
+        return {
+            status: 'paid',
+            transToken: transToken,
+            customerName: 'Mock User',
+            customerPhone: '12345678',
+            transactionAmount: '500.00',
+            transactionCurrency: 'BWP'
+        };
+    }
+
     const xmlBody = `
 <?xml version="1.0" encoding="utf-8"?>
 <API3G>
