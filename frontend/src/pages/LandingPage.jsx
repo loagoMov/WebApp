@@ -40,8 +40,11 @@ const LandingPage = () => {
                     </div>
                 </div>
                 <div className="lg:absolute lg:inset-y-0 lg:right-0 lg:w-1/2 bg-gray-100 flex items-center justify-center">
-                    {/* Placeholder for Hero Image or 3D Element */}
-                    <div className="text-gray-400 font-bold text-xl">Hero Image / 3D Visual</div>
+                    <img
+                        className="h-56 w-full object-cover sm:h-72 md:h-96 lg:w-full lg:h-full"
+                        src="/logo.png"
+                        alt="CoverBots Logo"
+                    />
                 </div>
             </div>
 

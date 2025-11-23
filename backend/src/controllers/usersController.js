@@ -37,9 +37,12 @@ const updateProfile = async (req, res) => {
             fullName,
             phone,
             location,
-            role, // Add role to stored data
             updatedAt: new Date().toISOString()
         };
+
+        if (role !== undefined) {
+            updateData.role = role;
+        }
 
         if (photoURL) {
             updateData.photoURL = photoURL;
@@ -50,7 +53,10 @@ const updateProfile = async (req, res) => {
         res.json({ message: 'Profile updated successfully', photoURL });
     } catch (error) {
         console.error('Error updating profile:', error);
-        res.status(500).json({ error: 'Failed to update profile' });
+        console.error('Error stack:', error.stack);
+        if (error.code) console.error('Error code:', error.code);
+        if (error.details) console.error('Error details:', error.details);
+        res.status(500).json({ error: 'Failed to update profile', details: error.message });
     }
 };
 

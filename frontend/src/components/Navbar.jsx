@@ -25,6 +25,9 @@ const Navbar = () => {
                         <Link to="/" className="text-gray-900 hover:text-primary px-3 py-2 rounded-md text-sm font-medium">
                             Home
                         </Link>
+                        <Link to="/about" className="text-gray-900 hover:text-primary px-3 py-2 rounded-md text-sm font-medium">
+                            About Us
+                        </Link>
                         {isAdmin && (
                             <Link to="/admin/dashboard" className="text-red-600 hover:text-red-800 px-3 py-2 rounded-md text-sm font-medium">
                                 Admin Dashboard

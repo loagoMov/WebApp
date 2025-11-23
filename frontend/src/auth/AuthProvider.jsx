@@ -8,6 +8,7 @@ const AuthProvider = ({ children }) => {
     // Use environment variables or fallbacks for development
     const domain = import.meta.env.VITE_AUTH0_DOMAIN || "dev-placeholder.auth0.com";
     const clientId = import.meta.env.VITE_AUTH0_CLIENT_ID || "placeholder-client-id";
+    const audience = import.meta.env.VITE_AUTH0_AUDIENCE || "https://coverbots.api";
     const redirectUri = window.location.origin;
 
     const onRedirectCallback = (appState) => {
@@ -24,6 +25,7 @@ const AuthProvider = ({ children }) => {
             clientId={clientId}
             authorizationParams={{
                 redirect_uri: redirectUri,
+                audience: audience,
             }}
             onRedirectCallback={onRedirectCallback}
         >
