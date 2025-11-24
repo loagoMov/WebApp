@@ -5,6 +5,9 @@ from rag_engine import RAGEngine
 from llm_client import LLMClient
 import shutil
 import os
+from dotenv import load_dotenv
+
+load_dotenv()
 
 app = FastAPI()
 rag = RAGEngine()
@@ -13,6 +16,8 @@ llm = LLMClient()
 class RecommendationRequest(BaseModel):
     user_profile: Dict[str, Any]
     query: str # e.g. "I need off-road cover"
+    active_vendor_ids: Optional[List[str]] = None
+    products: Optional[List[Dict]] = None
 
 @app.get("/")
 def read_root():
@@ -42,8 +47,8 @@ async def ingest_policy(vendor_id: str, file: UploadFile = File(...)):
 @app.post("/recommend")
 def get_recommendations(request: RecommendationRequest):
     try:
-        # 1. Retrieve relevant chunks
-        search_results = rag.query(request.query)
+        # 1. Retrieve relevant chunks (filtering by active vendors)
+        search_results = rag.query(request.query, where_filter={"vendor_id": {"$in": request.active_vendor_ids}} if request.active_vendor_ids else None)
         
         context_chunks = []
         if search_results and 'documents' in search_results and search_results['documents']:
@@ -52,19 +57,19 @@ def get_recommendations(request: RecommendationRequest):
                 context_chunks = search_results['documents'][0]
         
         # 2. Generate answer
-        recommendation_str = llm.generate_recommendation(request.user_profile, context_chunks)
+        recommendation_str = llm.generate_recommendation(request.user_profile, context_chunks, request.products)
         
-        # Try to parse JSON
-        import json
         try:
-            # Clean up potential markdown code blocks
-            clean_str = recommendation_str.replace("```json", "").replace("```", "").strip()
+            recommendations = json.loads(recommendation_str)
+            return recommendations
+        except json.JSONDecodeError:
+            print(f"Failed to decode JSON: {recommendation_str}")
+            return []place("```json", "").replace("```", "").strip()
             recommendation_data = json.loads(clean_str)
         except json.JSONDecodeError:
             # Fallback if LLM fails to return JSON
             recommendation_data = []
             print(f"Failed to parse JSON: {recommendation_str}")
-
         return {
             "recommendations": recommendation_data,
             "context_used": context_chunks

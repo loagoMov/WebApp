@@ -5,14 +5,37 @@ const ProductForm = ({ onSubmit, onCancel, initialData }) => {
         name: '',
         category: 'Auto',
         premium: '',
-        status: 'Draft'
+        status: 'Draft',
+        requirements: []
     });
+
+    // Ensure requirements is always an array if initialData didn't have it
+    if (initialData && !formData.requirements) {
+        setFormData(prev => ({ ...prev, requirements: [] }));
+    }
 
     const handleChange = (e) => {
         const { name, value } = e.target;
         setFormData(prev => ({
             ...prev,
             [name]: value
+        }));
+    };
+
+    const handleRequirementChange = (index, value) => {
+        const newRequirements = [...formData.requirements];
+        newRequirements[index] = value;
+        setFormData(prev => ({ ...prev, requirements: newRequirements }));
+    };
+
+    const addRequirement = () => {
+        setFormData(prev => ({ ...prev, requirements: [...prev.requirements, ''] }));
+    };
+
+    const removeRequirement = (index) => {
+        setFormData(prev => ({
+            ...prev,
+            requirements: prev.requirements.filter((_, i) => i !== index)
         }));
     };
 
@@ -83,6 +106,40 @@ const ProductForm = ({ onSubmit, onCancel, initialData }) => {
                     <option value="Draft">Draft</option>
                     <option value="Active">Active</option>
                 </select>
+            </div>
+
+            <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Policy Requirements</label>
+                {formData.requirements.map((req, index) => (
+                    <div key={index} className="flex gap-2 mb-2">
+                        <input
+                            type="text"
+                            value={req}
+                            onChange={(e) => handleRequirementChange(index, e.target.value)}
+                            className="flex-1 border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-primary focus:border-primary sm:text-sm"
+                            placeholder="e.g. Must be over 25 years old"
+                        />
+                        <button
+                            type="button"
+                            onClick={() => removeRequirement(index)}
+                            className="text-red-600 hover:text-red-800 px-2"
+                        >
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+                            </svg>
+                        </button>
+                    </div>
+                ))}
+                <button
+                    type="button"
+                    onClick={addRequirement}
+                    className="mt-2 text-sm text-primary hover:text-blue-700 font-medium flex items-center"
+                >
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" viewBox="0 0 20 20" fill="currentColor">
+                        <path fillRule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clipRule="evenodd" />
+                    </svg>
+                    Add Requirement
+                </button>
             </div>
 
             <div className="pt-4 flex justify-end space-x-3">

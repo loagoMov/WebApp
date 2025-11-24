@@ -183,23 +183,23 @@ const QuizPage = () => {
 
     const renderUserInfoStep = () => (
         <div className="space-y-6">
-            <h2 className="text-2xl font-bold text-gray-900">Let's get to know you</h2>
-            <p className="text-gray-500">We'll use this to personalize your insurance quotes.</p>
+            <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Let's get to know you</h2>
+            <p className="text-gray-500 dark:text-gray-400">We'll use this to personalize your insurance quotes.</p>
 
             <div className="space-y-4">
                 <div>
-                    <label className="block text-sm font-medium text-gray-700">Full Name</label>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Full Name</label>
                     <input
                         type="text"
                         name="fullName"
                         value={formData.fullName}
                         onChange={handleInputChange}
-                        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring-primary sm:text-sm p-2 border"
+                        className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white shadow-sm focus:border-primary focus:ring-primary sm:text-sm p-2 border"
                         placeholder="e.g. John Doe"
                     />
                 </div>
                 <div>
-                    <label className="block text-sm font-medium text-gray-700">Phone Number</label>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Phone Number</label>
                     <div className="mt-1 flex rounded-md shadow-sm">
                         <CountryCodeSelect
                             value={formData.countryCode}
@@ -211,26 +211,26 @@ const QuizPage = () => {
                             name="phone"
                             value={formData.phone}
                             onChange={handleInputChange}
-                            className="block w-full flex-1 rounded-none rounded-r-md border-gray-300 focus:border-primary focus:ring-primary sm:text-sm p-2 border"
+                            className="block w-full flex-1 rounded-none rounded-r-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:border-primary focus:ring-primary sm:text-sm p-2 border"
                             placeholder="71234567"
                         />
                     </div>
                 </div>
                 <div>
-                    <label className="block text-sm font-medium text-gray-700">Location</label>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Location</label>
                     <div className="mt-1 flex rounded-md shadow-sm">
                         <input
                             type="text"
                             name="location"
                             value={formData.location}
                             onChange={handleInputChange}
-                            className="block w-full flex-1 rounded-none rounded-l-md border-gray-300 focus:border-primary focus:ring-primary sm:text-sm p-2 border"
+                            className="block w-full flex-1 rounded-none rounded-l-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:border-primary focus:ring-primary sm:text-sm p-2 border"
                             placeholder="e.g. Gaborone"
                         />
                         <button
                             type="button"
                             onClick={handleUseLocation}
-                            className="relative -ml-px inline-flex items-center space-x-2 rounded-r-md border border-gray-300 bg-gray-50 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+                            className="relative -ml-px inline-flex items-center space-x-2 rounded-r-md border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
                         >
                             <svg className="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
@@ -255,21 +255,21 @@ const QuizPage = () => {
 
     const renderCategoryStep = () => (
         <div className="space-y-6">
-            <h2 className="text-2xl font-bold text-gray-900">What are you looking to cover?</h2>
+            <h2 className="text-2xl font-bold text-gray-900 dark:text-white">What are you looking to cover?</h2>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
                 {['Auto', 'Life', 'Funeral'].map((cat) => (
                     <div
                         key={cat}
                         onClick={() => setFormData({ ...formData, category: cat })}
-                        className={`cursor-pointer rounded-lg border p-6 text-center hover:border-primary hover:bg-blue-50 ${formData.category === cat ? 'border-primary bg-blue-50 ring-2 ring-primary' : 'border-gray-300'
+                        className={`cursor-pointer rounded-lg border p-6 text-center hover:border-primary hover:bg-blue-50 dark:hover:bg-blue-900/20 ${formData.category === cat ? 'border-primary bg-blue-50 dark:bg-blue-900/30 ring-2 ring-primary' : 'border-gray-300 dark:border-gray-600'
                             }`}
                     >
-                        <span className="block text-lg font-medium text-gray-900">{cat} Insurance</span>
+                        <span className="block text-lg font-medium text-gray-900 dark:text-white">{cat} Insurance</span>
                     </div>
                 ))}
             </div>
             <div className="flex justify-between">
-                <button onClick={prevStep} className="text-gray-600 hover:text-gray-900">Back</button>
+                <button onClick={prevStep} className="text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white">Back</button>
                 {formData.category && (
                     <button
                         onClick={nextStep}
@@ -284,51 +284,51 @@ const QuizPage = () => {
 
     const renderDetailsStep = () => (
         <div className="space-y-6">
-            <h2 className="text-2xl font-bold text-gray-900">Tell us a bit about yourself</h2>
+            <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Tell us a bit about yourself</h2>
             <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
                 <div>
-                    <label className="block text-sm font-medium text-gray-700">Age</label>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Age</label>
                     <input
                         type="number"
                         name="age"
                         value={formData.age}
                         onChange={handleInputChange}
-                        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring-primary sm:text-sm p-2 border"
+                        className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white shadow-sm focus:border-primary focus:ring-primary sm:text-sm p-2 border"
                     />
                 </div>
                 <div>
-                    <label className="block text-sm font-medium text-gray-700">Monthly Income (BWP)</label>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Monthly Income (BWP)</label>
                     <input
                         type="number"
                         name="income"
                         value={formData.income}
                         onChange={handleInputChange}
-                        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring-primary sm:text-sm p-2 border"
+                        className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white shadow-sm focus:border-primary focus:ring-primary sm:text-sm p-2 border"
                     />
                 </div>
                 <div>
-                    <label className="block text-sm font-medium text-gray-700">Monthly Insurance Budget (BWP)</label>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Monthly Insurance Budget (BWP)</label>
                     <input
                         type="number"
                         name="budget"
                         value={formData.budget}
                         onChange={handleInputChange}
-                        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring-primary sm:text-sm p-2 border"
+                        className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white shadow-sm focus:border-primary focus:ring-primary sm:text-sm p-2 border"
                     />
                 </div>
                 <div>
-                    <label className="block text-sm font-medium text-gray-700">Dependents</label>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Dependents</label>
                     <input
                         type="number"
                         name="dependents"
                         value={formData.dependents}
                         onChange={handleInputChange}
-                        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring-primary sm:text-sm p-2 border"
+                        className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white shadow-sm focus:border-primary focus:ring-primary sm:text-sm p-2 border"
                     />
                 </div>
             </div>
             <div className="flex justify-between">
-                <button onClick={prevStep} className="text-gray-600 hover:text-gray-900">Back</button>
+                <button onClick={prevStep} className="text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white">Back</button>
                 <button onClick={nextStep} className="rounded-md bg-primary px-6 py-2 text-white hover:bg-blue-700">Next</button>
             </div>
         </div>
@@ -336,21 +336,21 @@ const QuizPage = () => {
 
     const renderSpecificsStep = () => (
         <div className="space-y-6">
-            <h2 className="text-2xl font-bold text-gray-900">Specific Details</h2>
+            <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Specific Details</h2>
 
             {formData.category === 'Auto' && (
                 <div className="space-y-4">
                     <div>
-                        <label className="block text-sm font-medium text-gray-700">Vehicle Make & Model</label>
-                        <input type="text" name="vehicleMake" value={formData.vehicleMake} onChange={handleInputChange} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring-primary sm:text-sm p-2 border" />
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Vehicle Make & Model</label>
+                        <input type="text" name="vehicleMake" value={formData.vehicleMake} onChange={handleInputChange} className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white shadow-sm focus:border-primary focus:ring-primary sm:text-sm p-2 border" />
                     </div>
                     <div>
-                        <label className="block text-sm font-medium text-gray-700">Vehicle Year</label>
-                        <input type="number" name="vehicleYear" value={formData.vehicleYear} onChange={handleInputChange} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring-primary sm:text-sm p-2 border" />
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Vehicle Year</label>
+                        <input type="number" name="vehicleYear" value={formData.vehicleYear} onChange={handleInputChange} className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white shadow-sm focus:border-primary focus:ring-primary sm:text-sm p-2 border" />
                     </div>
                     <div>
-                        <label className="block text-sm font-medium text-gray-700">Estimated Value (BWP)</label>
-                        <input type="number" name="vehicleValue" value={formData.vehicleValue} onChange={handleInputChange} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring-primary sm:text-sm p-2 border" />
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Estimated Value (BWP)</label>
+                        <input type="number" name="vehicleValue" value={formData.vehicleValue} onChange={handleInputChange} className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white shadow-sm focus:border-primary focus:ring-primary sm:text-sm p-2 border" />
                     </div>
                 </div>
             )}
@@ -359,17 +359,17 @@ const QuizPage = () => {
                 <div className="space-y-4">
                     <div className="flex items-center">
                         <input type="checkbox" name="smoker" checked={formData.smoker} onChange={handleInputChange} className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary" />
-                        <label className="ml-2 block text-sm text-gray-900">Do you smoke?</label>
+                        <label className="ml-2 block text-sm text-gray-900 dark:text-gray-300">Do you smoke?</label>
                     </div>
                     <div className="flex items-center">
                         <input type="checkbox" name="conditions" checked={formData.conditions} onChange={handleInputChange} className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary" />
-                        <label className="ml-2 block text-sm text-gray-900">Any pre-existing medical conditions?</label>
+                        <label className="ml-2 block text-sm text-gray-900 dark:text-gray-300">Any pre-existing medical conditions?</label>
                     </div>
                 </div>
             )}
 
             <div className="flex justify-between">
-                <button onClick={prevStep} className="text-gray-600 hover:text-gray-900">Back</button>
+                <button onClick={prevStep} className="text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white">Back</button>
                 <button
                     onClick={handleSubmit}
                     disabled={loading}
@@ -382,13 +382,13 @@ const QuizPage = () => {
     );
 
     return (
-        <div className="min-h-screen bg-gray-50 py-12">
+        <div className="min-h-screen bg-gray-50 dark:bg-[#003366] py-12 transition-colors duration-300">
             <div className="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8">
-                <div className="rounded-lg bg-white px-6 py-8 shadow sm:px-10">
+                <div className="rounded-lg bg-white dark:bg-[#002244] px-6 py-8 shadow sm:px-10 transition-colors duration-300">
                     <div className="mb-8">
                         <div className="flex items-center justify-between">
-                            <span className="text-sm font-medium text-gray-500">Step {step} of 4</span>
-                            <div className="h-2 w-full max-w-xs rounded-full bg-gray-200 ml-4">
+                            <span className="text-sm font-medium text-gray-500 dark:text-gray-400">Step {step} of 4</span>
+                            <div className="h-2 w-full max-w-xs rounded-full bg-gray-200 dark:bg-gray-700 ml-4">
                                 <div className="h-2 rounded-full bg-primary" style={{ width: `${(step / 4) * 100}%` }}></div>
                             </div>
                         </div>

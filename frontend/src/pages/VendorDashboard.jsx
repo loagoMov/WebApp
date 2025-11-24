@@ -4,8 +4,11 @@ import { Navigate, Link } from 'react-router-dom';
 import Modal from '../components/Modal';
 import ProductForm from '../components/ProductForm';
 
+import { useUser } from '../context/UserContext';
+
 const VendorDashboard = () => {
     const { user, isAuthenticated, isLoading } = useAuth0();
+    const { userProfile } = useUser();
     const [activeTab, setActiveTab] = useState('products');
     const [subscription, setSubscription] = useState({ tier: 'free', status: 'inactive' });
 
@@ -69,8 +72,26 @@ const VendorDashboard = () => {
         return <Navigate to="/vendor/login" replace />;
     }
 
+    const isPending = userProfile?.status === 'pending';
+
     return (
         <div className="min-h-screen bg-gray-50">
+            {isPending && (
+                <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 fixed top-20 right-4 z-50 shadow-lg max-w-md">
+                    <div className="flex">
+                        <div className="flex-shrink-0">
+                            <svg className="h-5 w-5 text-yellow-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                                <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                            </svg>
+                        </div>
+                        <div className="ml-3">
+                            <p className="text-sm text-yellow-700">
+                                Your account is awaiting approval. You can draft products but they won't be visible to users until approved.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            )}
             <div className="bg-white shadow">
                 <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
                     <div className="flex h-16 justify-between items-center">
@@ -91,6 +112,28 @@ const VendorDashboard = () => {
             </div>
 
             <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8">
+                {/* Stats Overview */}
+                <div className="grid grid-cols-1 gap-5 sm:grid-cols-3 mb-8">
+                    <div className="bg-white overflow-hidden shadow rounded-lg">
+                        <div className="px-4 py-5 sm:p-6">
+                            <dt className="text-sm font-medium text-gray-500 truncate">Total Leads</dt>
+                            <dd className="mt-1 text-3xl font-semibold text-gray-900">{leads.length}</dd>
+                        </div>
+                    </div>
+                    <div className="bg-white overflow-hidden shadow rounded-lg">
+                        <div className="px-4 py-5 sm:p-6">
+                            <dt className="text-sm font-medium text-gray-500 truncate">Active Products</dt>
+                            <dd className="mt-1 text-3xl font-semibold text-gray-900">{products.filter(p => p.status === 'Active').length}</dd>
+                        </div>
+                    </div>
+                    <div className="bg-white overflow-hidden shadow rounded-lg">
+                        <div className="px-4 py-5 sm:p-6">
+                            <dt className="text-sm font-medium text-gray-500 truncate">Profile Views</dt>
+                            <dd className="mt-1 text-3xl font-semibold text-gray-900">124</dd>
+                        </div>
+                    </div>
+                </div>
+
                 <div className="flex space-x-4 mb-8 border-b border-gray-200">
                     {['products', 'leads', 'bids', 'settings'].map((tab) => (
                         <button
@@ -195,7 +238,9 @@ const VendorDashboard = () => {
                             ) : (
                                 <button
                                     onClick={openAddModal}
-                                    className="bg-primary text-white px-4 py-2 rounded-md text-sm hover:bg-blue-700"
+                                    disabled={isPending}
+                                    className={`px-4 py-2 rounded-md text-sm ${isPending ? 'bg-gray-400 cursor-not-allowed' : 'bg-primary hover:bg-blue-700'} text-white`}
+                                    title={isPending ? "Account pending approval" : "Add new product"}
                                 >
                                     + Add Product
                                 </button>

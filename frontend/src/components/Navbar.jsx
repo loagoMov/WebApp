@@ -3,6 +3,8 @@ import { Link } from 'react-router-dom';
 import { useAuth0 } from '@auth0/auth0-react';
 import { useUser } from '../context/UserContext';
 
+import PrimeNavigation from './PrimeNavigation';
+
 import logo from '../assets/logo.png';
 
 import { ADMIN_EMAILS } from './ProtectedAdminRoute';
@@ -14,52 +16,61 @@ const Navbar = () => {
     const { userProfile } = useUser();
     const isAdmin = isAuthenticated && user?.email && ADMIN_EMAILS.includes(user.email);
 
+    const menuItems = [
+        { label: 'Home', ariaLabel: 'Go to home page', link: '/' },
+        { label: 'About Us', ariaLabel: 'Learn about us', link: '/about' },
+        { label: 'Get Recommended', ariaLabel: 'Take the quiz', link: '/quiz' },
+    ];
+
+    if (isAdmin) {
+        menuItems.push({ label: 'Admin Dashboard', ariaLabel: 'Admin Dashboard', link: '/admin/dashboard' });
+    }
+
+    if (userProfile?.role === 'vendor') {
+        menuItems.push({ label: 'Vendor Portal', ariaLabel: 'Vendor Portal', link: '/vendor/dashboard' });
+    } else if (!isAuthenticated || (userProfile && userProfile.role !== 'vendor')) {
+        menuItems.push({ label: 'Become a Vendor', ariaLabel: 'Vendor Registration', link: isAuthenticated ? "/vendor/register" : "/vendor/register" });
+    }
+
+    if (isAuthenticated) {
+        menuItems.push({ label: 'Profile', ariaLabel: 'User Profile', link: '/profile' });
+    }
+
+    const socialItems = [
+        { label: 'Twitter', link: 'https://twitter.com' },
+        { label: 'GitHub', link: 'https://github.com' },
+        { label: 'LinkedIn', link: 'https://linkedin.com' }
+    ];
+
     return (
-        <nav className="bg-white shadow-sm sticky top-0 z-50">
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                <div className="flex justify-between h-16">
-                    <div className="flex items-center">
+        <nav className="bg-white dark:bg-[#003366] dark:text-white shadow-sm sticky top-0 z-50 h-16 transition-colors duration-300">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-full">
+                <div className="flex justify-between items-center h-full">
+                    <div className="flex items-center z-50">
                         <Link to="/" className="flex-shrink-0 flex items-center">
                             <img className="h-12 w-auto" src={logo} alt="CoverBots" />
                         </Link>
                     </div>
-                    <div className="hidden sm:ml-6 sm:flex sm:items-center sm:space-x-8">
-                        <Link to="/" className="text-gray-900 hover:text-primary px-3 py-2 rounded-md text-sm font-medium">
-                            Home
-                        </Link>
-                        <Link to="/about" className="text-gray-900 hover:text-primary px-3 py-2 rounded-md text-sm font-medium">
-                            About Us
-                        </Link>
-                        {isAdmin && (
-                            <Link to="/admin/dashboard" className="text-red-600 hover:text-red-800 px-3 py-2 rounded-md text-sm font-medium">
-                                Admin Dashboard
-                            </Link>
-                        )}
 
-                        {/* Show Vendor Portal only if user is a vendor */}
-                        {userProfile?.role === 'vendor' && (
-                            <Link
-                                to="/vendor/dashboard"
-                                className="text-gray-500 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium"
-                            >
-                                Vendor Portal
-                            </Link>
-                        )}
+                    {/* Desktop Menu (Hidden on mobile/tablet if you want full replacement, or keep for desktop) */}
+                    {/* For this request, we are adding the feature to the nav. 
+                        The StaggeredMenu is typically a full-screen overlay. 
+                        We can place it here. It handles its own toggle button. */}
 
-                        {/* Show "Become a Vendor" if not logged in or not a vendor */}
-                        {(!isAuthenticated || (userProfile && userProfile.role !== 'vendor')) && (
-                            <Link
-                                to={isAuthenticated ? "/vendor/register" : "/vendor/register"}
-                                className="text-gray-500 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium"
-                            >
-                                Become a Vendor
-                            </Link>
-                        )}
+                    <div className="flex items-center">
+                        <div className="hidden sm:flex sm:items-center sm:space-x-8 mr-8">
+                            {/* Keep existing desktop links if desired, or remove to fully rely on StaggeredMenu. 
+                                The user said "add this feature to the nav", implying integration. 
+                                Let's keep the main CTA visible and put the rest in the menu or just add the menu icon.
+                                Given the "StaggeredMenu" nature, it usually replaces standard nav or acts as a hamburger menu.
+                                Let's keep the AuthButtons visible for easy access and use StaggeredMenu for navigation.
+                            */}
+                            <AuthButtons />
+                        </div>
 
-                        <Link to="/quiz" className="bg-primary text-white hover:bg-blue-700 px-4 py-2 rounded-md text-sm font-medium transition-colors">
-                            Get Recommended
-                        </Link>
-                        <AuthButtons />
+                        <div className="relative">
+                            <PrimeNavigation />
+                        </div>
                     </div>
                 </div>
             </div>

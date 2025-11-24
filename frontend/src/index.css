@@ -7,8 +7,20 @@
   --color-background: #F5F1E6;
 }
 
+:root {
+  --bg-color: #F5F1E6;
+  --text-color: #003366;
+}
+
+:root.dark {
+  --bg-color: #003366;
+  --text-color: #ffffff;
+}
+
 @layer base {
   body {
-    @apply bg-background text-gray-900 antialiased;
+    @apply antialiased transition-colors duration-300;
+    background-color: var(--bg-color);
+    color: var(--text-color);
   }
 }

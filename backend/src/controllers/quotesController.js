@@ -46,18 +46,59 @@ const saveQuote = async (req, res) => {
 const getSavedQuotes = async (req, res) => {
     try {
         const { userId } = req.params;
-        const snapshot = await db.collection('saved_quotes').where('userId', '==', userId).orderBy('savedAt', 'desc').get();
+        const snapshot = await db.collection('saved_quotes').where('userId', '==', userId).get();
 
         const quotes = [];
         snapshot.forEach(doc => {
             quotes.push({ id: doc.id, ...doc.data() });
         });
 
-        res.json(quotes);
+        // Enrich quotes with vendor contact info
+        const vendorIds = [...new Set(quotes.map(q => q.vendorId).filter(Boolean))];
+        const vendorDetailsMap = {};
+
+        for (const vendorId of vendorIds) {
+            const vendorDoc = await db.collection('users').doc(vendorId).get();
+            if (vendorDoc.exists) {
+                const vendorData = vendorDoc.data();
+                vendorDetailsMap[vendorId] = {
+                    email: vendorData.email || '',
+                    phone: vendorData.phone || '',
+                    companyName: vendorData.companyName || vendorData.fullName || 'Unknown Vendor'
+                };
+            }
+        }
+
+        // Attach vendor info to quotes
+        const enrichedQuotes = quotes.map(quote => ({
+            ...quote,
+            vendorEmail: vendorDetailsMap[quote.vendorId]?.email,
+            vendorPhone: vendorDetailsMap[quote.vendorId]?.phone,
+            vendorCompanyName: vendorDetailsMap[quote.vendorId]?.companyName
+        }));
+
+        // Sort in memory
+        enrichedQuotes.sort((a, b) => new Date(b.savedAt) - new Date(a.savedAt));
+
+        res.json(enrichedQuotes);
     } catch (error) {
         console.error('Error fetching saved quotes:', error);
         res.status(500).json({ error: 'Failed to fetch saved quotes' });
     }
 };
 
-module.exports = { saveQuote, getSavedQuotes };
+const deleteQuote = async (req, res) => {
+    try {
+        const { quoteId } = req.params;
+
+        // Delete the quote document
+        await db.collection('saved_quotes').doc(quoteId).delete();
+
+        res.status(200).json({ message: 'Quote deleted successfully' });
+    } catch (error) {
+        console.error('Error deleting quote:', error);
+        res.status(500).json({ error: 'Failed to delete quote' });
+    }
+};
+
+module.exports = { saveQuote, getSavedQuotes, deleteQuote };

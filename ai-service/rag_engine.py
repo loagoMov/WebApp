@@ -29,12 +29,13 @@ class RAGEngine:
         )
         return len(chunks)
 
-    def query(self, query_text: str, n_results: int = 3):
+    def query(self, query_text: str, n_results: int = 3, where_filter: dict = None):
         """
         Retrieves the most relevant document chunks.
         """
         results = self.collection.query(
             query_texts=[query_text],
-            n_results=n_results
+            n_results=n_results,
+            where=where_filter
         )
         return results

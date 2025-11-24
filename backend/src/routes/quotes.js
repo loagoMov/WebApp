@@ -1,8 +1,14 @@
 const express = require('express');
 const router = express.Router({ mergeParams: true });
-const { saveQuote, getSavedQuotes } = require('../controllers/quotesController');
+const quotesController = require('../controllers/quotesController');
 
-router.post('/:userId', saveQuote);
-router.get('/:userId', getSavedQuotes);
+// POST /api/quotes/:userId - Save a quote
+router.post('/:userId', quotesController.saveQuote);
+
+// GET /api/quotes/:userId - Get all saved quotes for a user
+router.get('/:userId', quotesController.getSavedQuotes);
+
+// DELETE /api/quotes/:quoteId - Delete a saved quote
+router.delete('/:quoteId', quotesController.deleteQuote);
 
 module.exports = router;

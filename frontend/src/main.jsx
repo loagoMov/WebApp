@@ -6,6 +6,9 @@ import AuthProvider from './auth/AuthProvider'
 import UserProvider from './context/UserContext'
 import './index.css'
 import './config/firebase'
+import "primereact/resources/themes/lara-light-blue/theme.css";
+import "primereact/resources/primereact.min.css";
+import "primeicons/primeicons.css";
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>

@@ -6,3 +6,4 @@ sentence-transformers
 google-generativeai
 python-multipart
 pydantic
+python-dotenv

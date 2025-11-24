@@ -45,6 +45,9 @@ const updateProfile = async (req, res) => {
 
         if (role !== undefined) {
             updateData.role = role;
+            if (role === 'vendor') {
+                updateData.status = 'pending';
+            }
         }
 
         if (photoURL) {
@@ -90,7 +93,7 @@ const deleteUser = async (req, res) => {
         // 2. Delete from Auth0 (if configured)
         if (managementClient) {
             try {
-                await managementClient.users.delete({ id: userId });
+                await managementClient.users.delete(userId);
                 console.log(`User ${userId} deleted from Auth0`);
             } catch (auth0Error) {
                 console.error('Error deleting user from Auth0:', auth0Error.message);
@@ -108,5 +111,40 @@ const deleteUser = async (req, res) => {
     }
 };
 
-module.exports = { updateProfile, getProfile, deleteUser };
+const getPendingVendors = async (req, res) => {
+    try {
+        const vendorsRef = db.collection('users');
+        const snapshot = await vendorsRef.where('role', '==', 'vendor').where('status', '==', 'pending').get();
+
+        const pendingVendors = [];
+        snapshot.forEach(doc => {
+            pendingVendors.push({ id: doc.id, ...doc.data() });
+        });
+
+        res.json(pendingVendors);
+    } catch (error) {
+        console.error('Error fetching pending vendors:', error);
+        res.status(500).json({ error: 'Failed to fetch pending vendors' });
+    }
+};
+
+const updateVendorStatus = async (req, res) => {
+    try {
+        const { userId } = req.params;
+        const { status } = req.body; // 'approved' or 'rejected'
+
+        if (!['approved', 'rejected'].includes(status)) {
+            return res.status(400).json({ error: 'Invalid status' });
+        }
+
+        await db.collection('users').doc(userId).update({ status });
+
+        res.json({ message: `Vendor status updated to ${status}` });
+    } catch (error) {
+        console.error('Error updating vendor status:', error);
+        res.status(500).json({ error: 'Failed to update vendor status' });
+    }
+};
+
+module.exports = { updateProfile, getProfile, deleteUser, getPendingVendors, updateVendorStatus };
 

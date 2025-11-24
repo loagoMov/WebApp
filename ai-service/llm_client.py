@@ -10,7 +10,7 @@ class LLMClient:
             genai.configure(api_key=api_key)
             self.model = genai.GenerativeModel('gemini-flash-latest')
 
-    def generate_recommendation(self, user_profile: dict, context_chunks: list) -> str:
+    def generate_recommendation(self, user_profile: Dict, context_chunks: List[str], products: List[Dict] = None) -> str:
         """
         Generates a recommendation using Gemini based on context.
         """
@@ -19,44 +19,40 @@ class LLMClient:
 
         context_text = "\n\n".join(context_chunks)
         
+        products_context = ""
+        if products:
+            products_context = "CANDIDATE PRODUCTS (Use these for recommendations):\n"
+            for p in products:
+                reqs = ", ".join(p.get('requirements', []))
+                products_context += f"- ID: {p.get('id')}, Name: {p.get('name')}, Vendor: {p.get('vendorId')}, Premium: {p.get('premium')}, Requirements: [{reqs}]\n"
+
         prompt = f"""
         You are an expert insurance advisor for CoverBots.
         
         USER PROFILE:
         {user_profile}
         
+        {products_context}
+
         RELEVANT POLICY CLAUSES (CONTEXT):
         {context_text}
         
         TASK:
-        Based ONLY on the provided context and the user's profile, recommend the best matching policies.
+        1. Analyze the User Profile against the Candidate Products and their Requirements.
+        2. Select the TOP 3 products that best match the user's needs and for which the user meets the requirements.
+        3. If a user does NOT meet a requirement, you may still recommend it if it's a strong match, but mark the requirement as unmet.
+        4. Use the Context to provide specific details about coverage.
         
         OUTPUT FORMAT:
         Return a valid JSON array of objects. Do not include markdown formatting (like ```json).
         Each object must have:
-        - id: number
-        - vendorName: string (infer from context or use generic name)
-        - productName: string
-        - score: number (0-100 match score)
-        - premium: number (estimated monthly premium in BWP)
+        - id: (product id)
+        - vendorName: (vendor name)
+        - productName: (product name)
+        - score: (0-100 match score)
+        - premium: (numeric)
         - currency: "BWP"
         - frequency: "Monthly"
-        - tags: array of strings (key benefits)
-        - matchBreakdown: object { budgetFit: number, coverageMatch: number, vendorRating: number }
-        
-        Example:
-        [
-            {
-                "id": 1,
-                "vendorName": "Example Insure",
-                "productName": "Gold Cover",
-                "score": 95,
-                "premium": 500,
-                "currency": "BWP",
-                "frequency": "Monthly",
-                "tags": ["Low Excess"],
-                "matchBreakdown": { "budgetFit": 90, "coverageMatch": 100, "vendorRating": 95 }
-            }
         ]
         """
         

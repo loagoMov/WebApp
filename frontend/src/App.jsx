@@ -24,6 +24,50 @@ import VendorRegisterPage from './pages/VendorRegisterPage';
 import VendorCompleteRegistration from './pages/VendorCompleteRegistration';
 import InactivityHandler from './components/InactivityHandler';
 import AboutPage from './pages/AboutPage';
+import ThemeToggle from './components/ThemeToggle';
+import BecomeVendorPage from './pages/BecomeVendorPage';
+
+import { AnimatePresence } from 'motion/react';
+import { useLocation } from 'react-router-dom';
+import PageTransition from './components/PageTransition';
+
+// ... imports ...
+
+const AnimatedRoutes = () => {
+  const location = useLocation();
+
+  return (
+    <AnimatePresence mode="wait">
+      <Routes location={location} key={location.pathname}>
+        <Route path="/" element={<PageTransition><LandingPage /></PageTransition>} />
+        <Route path="/about" element={<PageTransition><AboutPage /></PageTransition>} />
+        <Route path="/quiz" element={<PageTransition><QuizPage /></PageTransition>} />
+        <Route path="/results" element={<PageTransition><ResultsPage /></PageTransition>} />
+        <Route path="/vendor/dashboard" element={<PageTransition><VendorDashboard /></PageTransition>} />
+        <Route path="/admin/dashboard" element={
+          <PageTransition>
+            <ProtectedAdminRoute>
+              <AdminDashboard />
+            </ProtectedAdminRoute>
+          </PageTransition>
+        } />
+        <Route path="/vendor/login" element={<PageTransition><VendorLogin /></PageTransition>} />
+        <Route path="/admin/login" element={<PageTransition><AdminLogin /></PageTransition>} />
+        <Route path="/login" element={<PageTransition><LoginPage /></PageTransition>} />
+        <Route path="/profile" element={<PageTransition><Profile /></PageTransition>} />
+        <Route path="/pricing" element={<PageTransition><PricingPage /></PageTransition>} />
+        <Route path="/vendor/pricing" element={<PageTransition><VendorPricingPage /></PageTransition>} />
+        <Route path="/subscription/success" element={<PageTransition><SubscriptionSuccess /></PageTransition>} />
+        <Route path="/subscription/cancel" element={<PageTransition><SubscriptionCancel /></PageTransition>} />
+        <Route path="/onboarding" element={<PageTransition><OnboardingPage /></PageTransition>} />
+        <Route path="/register" element={<PageTransition><RegisterPage /></PageTransition>} />
+        <Route path="/vendor/register" element={<PageTransition><VendorRegisterPage /></PageTransition>} />
+        <Route path="/vendor/apply" element={<PageTransition><BecomeVendorPage /></PageTransition>} />
+        <Route path="/vendor/complete-registration" element={<PageTransition><VendorCompleteRegistration /></PageTransition>} />
+      </Routes>
+    </AnimatePresence>
+  );
+};
 
 function App() {
   return (
@@ -31,32 +75,10 @@ function App() {
       <Navbar />
       <main className="flex-grow">
         <AuthWrapper>
-          <Routes>
-            <Route path="/" element={<LandingPage />} />
-            <Route path="/about" element={<AboutPage />} />
-            <Route path="/quiz" element={<QuizPage />} />
-            <Route path="/results" element={<ResultsPage />} />
-            <Route path="/vendor/dashboard" element={<VendorDashboard />} />
-            <Route path="/admin/dashboard" element={
-              <ProtectedAdminRoute>
-                <AdminDashboard />
-              </ProtectedAdminRoute>
-            } />
-            <Route path="/vendor/login" element={<VendorLogin />} />
-            <Route path="/admin/login" element={<AdminLogin />} />
-            <Route path="/login" element={<LoginPage />} />
-            <Route path="/profile" element={<Profile />} />
-            <Route path="/pricing" element={<PricingPage />} />
-            <Route path="/vendor/pricing" element={<VendorPricingPage />} />
-            <Route path="/subscription/success" element={<SubscriptionSuccess />} />
-            <Route path="/subscription/cancel" element={<SubscriptionCancel />} />
-            <Route path="/onboarding" element={<OnboardingPage />} />
-            <Route path="/register" element={<RegisterPage />} />
-            <Route path="/vendor/register" element={<VendorRegisterPage />} />
-            <Route path="/vendor/complete-registration" element={<VendorCompleteRegistration />} />
-          </Routes>
+          <AnimatedRoutes />
         </AuthWrapper>
         <InactivityHandler />
+        <ThemeToggle />
       </main>
       <Footer />
     </div>
