@@ -95,8 +95,46 @@ const Profile = () => {
 
     const handleUseLocation = () => {
         if (navigator.geolocation) {
-            navigator.geolocation.getCurrentPosition((position) => {
-                setFormData(prev => ({ ...prev, location: `Lat: ${position.coords.latitude.toFixed(4)}, Long: ${position.coords.longitude.toFixed(4)}` }));
+            navigator.geolocation.getCurrentPosition(async (position) => {
+                const { latitude, longitude } = position.coords;
+
+                try {
+                    // Use OpenStreetMap Nominatim for reverse geocoding (free, no API key needed)
+                    const response = await fetch(
+                        `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=18&addressdetails=1`
+                    );
+                    const data = await response.json();
+
+                    // Extract readable address
+                    const address = data.address;
+                    let locationName = '';
+
+                    // Build location string from most specific to least
+                    if (address.suburb || address.neighbourhood) {
+                        locationName = address.suburb || address.neighbourhood;
+                    } else if (address.village || address.town || address.city) {
+                        locationName = address.village || address.town || address.city;
+                    }
+
+                    // Add city if we have a suburb/neighbourhood
+                    if ((address.suburb || address.neighbourhood) && address.city) {
+                        locationName += `, ${address.city}`;
+                    }
+
+                    // Fallback to full display name if specific parts not available
+                    if (!locationName) {
+                        locationName = data.display_name;
+                    }
+
+                    setFormData(prev => ({ ...prev, location: locationName }));
+                } catch (error) {
+                    console.error('Error getting location name:', error);
+                    // Fallback to coordinates if geocoding fails
+                    setFormData(prev => ({
+                        ...prev,
+                        location: `Lat: ${latitude.toFixed(4)}, Long: ${longitude.toFixed(4)}`
+                    }));
+                }
             }, (error) => {
                 console.error("Error getting location:", error);
             });
@@ -189,7 +227,7 @@ const Profile = () => {
                         </div>
                         <img
                             className="h-16 w-16 rounded-full border-4 border-white object-cover"
-                            src={formData.photoURL}
+                            src={formData.photoURL || "https://via.placeholder.com/150"}
                             alt={formData.fullName}
                         />
                     </div>

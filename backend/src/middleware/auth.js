@@ -1,13 +1,35 @@
-const { auth } = require('express-oauth2-jwt-bearer');
-const dotenv = require('dotenv');
+const admin = require('firebase-admin');
 
-dotenv.config();
+// Authorization middleware using Firebase Admin SDK
+const checkJwt = async (req, res, next) => {
+    const authHeader = req.headers.authorization;
 
-// Authorization middleware. When used, the Access Token must
-// exist and be verified against the Auth0 JSON Web Key Set.
-const checkJwt = auth({
-    audience: process.env.AUTH0_AUDIENCE || 'https://coverbots.api',
-    issuerBaseURL: process.env.AUTH0_ISSUER_BASE_URL || 'https://dev-placeholder.auth0.com/',
-});
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        return res.status(401).json({ error: 'Unauthorized: No token provided' });
+    }
+
+    const token = authHeader.split('Bearer ')[1];
+
+    try {
+        const decodedToken = await admin.auth().verifyIdToken(token);
+        // Normalize the user object to match previous Auth0 structure where possible, 
+        // or adapt controllers to use this new structure.
+        // Firebase 'sub' is the 'uid'.
+        req.auth = {
+            payload: {
+                sub: decodedToken.uid,
+                email: decodedToken.email,
+                ...decodedToken
+            }
+        };
+        // Also set req.user for convenience if used elsewhere
+        req.user = decodedToken;
+
+        next();
+    } catch (error) {
+        console.error('Error verifying Firebase token:', error);
+        return res.status(401).json({ error: 'Unauthorized: Invalid token' });
+    }
+};
 
 module.exports = checkJwt;

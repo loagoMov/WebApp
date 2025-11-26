@@ -89,6 +89,7 @@ const PricingPage = () => {
                             <h3 className="text-lg leading-6 font-medium text-gray-900">{tier.name}</h3>
                             <p className="mt-4">
                                 <span className="text-4xl font-extrabold text-gray-900">{tier.price}</span>
+                                {tier.price !== 'Free' && <span className="text-sm text-gray-500 block mt-1">Billed Monthly</span>}
                             </p>
                             <button
                                 onClick={() => handleSubscribe(tier.tierId)}

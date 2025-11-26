@@ -5,16 +5,26 @@ import { Badge } from 'primereact/badge';
 import { Avatar } from 'primereact/avatar';
 import { classNames } from 'primereact/utils';
 import { useNavigate } from 'react-router-dom';
-import { useAuth0 } from '@auth0/auth0-react';
+import { useAuth } from '../context/AuthContext';
 import { useUser } from '../context/UserContext';
 import { ADMIN_EMAILS } from './ProtectedAdminRoute';
 
 export default function PrimeNavigation() {
     const [visible, setVisible] = useState(false);
     const navigate = useNavigate();
-    const { user, isAuthenticated, logout, loginWithRedirect } = useAuth0();
+    const { currentUser, logout } = useAuth();
     const { userProfile } = useUser();
-    const isAdmin = isAuthenticated && user?.email && ADMIN_EMAILS.includes(user.email);
+    const isAdmin = currentUser?.email && ADMIN_EMAILS.includes(currentUser.email);
+
+    const handleLogout = async () => {
+        try {
+            await logout();
+            navigate('/');
+            setVisible(false);
+        } catch (error) {
+            console.error("Failed to log out", error);
+        }
+    };
 
     const itemRenderer = (item) => (
         <div className='p-menuitem-content'>
@@ -80,11 +90,11 @@ export default function PrimeNavigation() {
                     command: () => { navigate('/vendor/dashboard'); setVisible(false); },
                     template: itemRenderer
                 }] : []),
-                ...((!isAuthenticated || (userProfile && userProfile.role !== 'vendor')) ? [{
+                ...((!currentUser || (userProfile && userProfile.role !== 'vendor')) ? [{
                     label: 'Become a Vendor',
                     icon: 'pi pi-briefcase',
                     command: () => {
-                        if (isAuthenticated) {
+                        if (currentUser) {
                             navigate('/vendor/apply');
                         } else {
                             navigate('/vendor/register');
@@ -98,7 +108,7 @@ export default function PrimeNavigation() {
         {
             label: 'Account',
             items: [
-                ...(isAuthenticated ? [
+                ...(currentUser ? [
                     {
                         label: 'Profile',
                         icon: 'pi pi-user',
@@ -108,14 +118,14 @@ export default function PrimeNavigation() {
                     {
                         label: 'Logout',
                         icon: 'pi pi-sign-out',
-                        command: () => { logout({ logoutParams: { returnTo: window.location.origin } }); setVisible(false); },
+                        command: handleLogout,
                         template: itemRenderer
                     }
                 ] : [
                     {
                         label: 'Login',
                         icon: 'pi pi-sign-in',
-                        command: () => { loginWithRedirect(); setVisible(false); },
+                        command: () => { navigate('/login'); setVisible(false); },
                         template: itemRenderer
                     },
                     {

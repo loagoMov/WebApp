@@ -15,21 +15,19 @@ const AuthProvider = ({ children }) => {
         navigate(appState?.returnTo || window.location.pathname);
     };
 
-    if (domain === "dev-placeholder.auth0.com") {
-        console.warn("Auth0 Domain is missing. Auth features will not work correctly until configured.");
-    }
 
     return (
         <Auth0Provider
-            domain={domain}
-            clientId={clientId}
+            domain={import.meta.env.VITE_AUTH0_DOMAIN}
+            clientId={import.meta.env.VITE_AUTH0_CLIENT_ID}
             authorizationParams={{
-                redirect_uri: redirectUri,
-                audience: audience,
+                redirect_uri: window.location.origin,
+                audience: import.meta.env.VITE_AUTH0_AUDIENCE || 'https://coverbots.api',
+                scope: 'openid profile email',
             }}
-            onRedirectCallback={onRedirectCallback}
+            cacheLocation="memory"
             useRefreshTokens={true}
-            cacheLocation="localstorage"
+            useRefreshTokensFallback={true}
         >
             {children}
         </Auth0Provider>

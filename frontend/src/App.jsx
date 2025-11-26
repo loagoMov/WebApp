@@ -15,13 +15,11 @@ import VendorPricingPage from './pages/VendorPricingPage';
 import SubscriptionSuccess from './pages/SubscriptionSuccess';
 import SubscriptionCancel from './pages/SubscriptionCancel';
 import OnboardingPage from './pages/OnboardingPage';
-import AuthWrapper from './components/AuthWrapper';
 import ProtectedAdminRoute from './components/ProtectedAdminRoute';
 import AuthProvider from './auth/AuthProvider';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import VendorRegisterPage from './pages/VendorRegisterPage';
-import VendorCompleteRegistration from './pages/VendorCompleteRegistration';
 import InactivityHandler from './components/InactivityHandler';
 import AboutPage from './pages/AboutPage';
 import ThemeToggle from './components/ThemeToggle';
@@ -63,7 +61,6 @@ const AnimatedRoutes = () => {
         <Route path="/register" element={<PageTransition><RegisterPage /></PageTransition>} />
         <Route path="/vendor/register" element={<PageTransition><VendorRegisterPage /></PageTransition>} />
         <Route path="/vendor/apply" element={<PageTransition><BecomeVendorPage /></PageTransition>} />
-        <Route path="/vendor/complete-registration" element={<PageTransition><VendorCompleteRegistration /></PageTransition>} />
       </Routes>
     </AnimatePresence>
   );
@@ -74,9 +71,7 @@ function App() {
     <div className="flex flex-col min-h-screen">
       <Navbar />
       <main className="flex-grow">
-        <AuthWrapper>
-          <AnimatedRoutes />
-        </AuthWrapper>
+        <AnimatedRoutes />
         <InactivityHandler />
         <ThemeToggle />
       </main>

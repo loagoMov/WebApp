@@ -1,17 +1,29 @@
-import React, { useState, useEffect } from 'react';
-import { useAuth0 } from '@auth0/auth0-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { useAuth } from '../context/AuthContext';
 import { db } from '../config/firebase';
-import { collection, query, orderBy, getDocs } from 'firebase/firestore';
+import { collection, query, orderBy, getDocs, where, onSnapshot } from 'firebase/firestore';
 import Modal from '../components/Modal';
+import { getDashboardStats } from '../services/analytics';
+import { Chart } from 'primereact/chart';
+import { Toast } from 'primereact/toast';
 
 const AdminDashboard = () => {
-    const { user, logout, getAccessTokenSilently } = useAuth0();
+    const { currentUser, logout } = useAuth();
     const [activeTab, setActiveTab] = useState('overview');
     const [transactions, setTransactions] = useState([]);
     const [loadingTransactions, setLoadingTransactions] = useState(false);
     const [pendingVendors, setPendingVendors] = useState([]);
     const [loadingVendors, setLoadingVendors] = useState(false);
     const [expandedCard, setExpandedCard] = useState(null);
+    const [stats, setStats] = useState(null);
+    const [loadingStats, setLoadingStats] = useState(true);
+    const toast = useRef(null);
+
+    // CAC/LTV Calculator State
+    const [marketingSpend, setMarketingSpend] = useState(1000);
+    const [cac, setCac] = useState(0);
+    const [ltv, setLtv] = useState(0);
+
     const [bids, setBids] = useState([
         { id: 1, vendor: 'AutoSure', amount: 500, status: 'pending', placement: 'Top Banner' },
         { id: 2, vendor: 'HomeGuard', amount: 300, status: 'approved', placement: 'Sidebar' }
@@ -21,40 +33,84 @@ const AdminDashboard = () => {
         if (activeTab === 'transactions') {
             fetchTransactions();
         } else if (activeTab === 'overview') {
-            fetchPendingVendors();
+            // fetchPendingVendors(); // Handled by real-time listener
+            fetchStats();
         }
     }, [activeTab]);
 
-    const fetchPendingVendors = async () => {
-        setLoadingVendors(true);
+    useEffect(() => {
+        if (stats && stats.newUsersCount > 0) {
+            const calculatedCac = marketingSpend / stats.newUsersCount;
+            setCac(calculatedCac.toFixed(2));
+
+            // Simple LTV assumption: Avg Lead Value (50) * Avg Leads per User (0.5) * 12 months (Retention)
+            // This is a placeholder model.
+            const avgLeadValue = 50;
+            const avgLeadsPerUser = stats.funnel.leads / (stats.newUsersCount || 1);
+            const retention = 12;
+            const calculatedLtv = avgLeadValue * avgLeadsPerUser * retention;
+            setLtv(calculatedLtv.toFixed(2));
+        }
+    }, [marketingSpend, stats]);
+
+    const fetchStats = async () => {
+        setLoadingStats(true);
         try {
-            const token = await getAccessTokenSilently();
-            const response = await fetch('http://localhost:3000/api/users/pending-vendors', {
-                headers: { Authorization: `Bearer ${token}` }
-            });
-
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-
-            const data = await response.json();
-            if (Array.isArray(data)) {
-                setPendingVendors(data);
-            } else {
-                console.error("Received non-array data for pending vendors:", data);
-                setPendingVendors([]);
-            }
+            const token = await currentUser.getIdToken();
+            const data = await getDashboardStats(token);
+            setStats(data);
         } catch (error) {
-            console.error("Error fetching pending vendors:", error);
-            setPendingVendors([]);
+            console.error("Error fetching stats:", error);
         } finally {
-            setLoadingVendors(false);
+            setLoadingStats(false);
         }
     };
 
+    // Ref to track if initial load is done
+    const isInitialLoad = useRef(true);
+
+    useEffect(() => {
+        if (activeTab === 'overview') {
+            setLoadingVendors(true); // Added this back for initial loading state
+            const q = query(
+                collection(db, 'users'),
+                where('role', '==', 'vendor'),
+                where('status', '==', 'pending')
+            );
+
+            const unsubscribe = onSnapshot(q, (snapshot) => {
+                const vendors = [];
+                snapshot.forEach((doc) => {
+                    vendors.push({ id: doc.id, ...doc.data() });
+                });
+
+                if (!isInitialLoad.current) {
+                    snapshot.docChanges().forEach((change) => {
+                        if (change.type === "added") {
+                            toast.current.show({ severity: 'info', summary: 'New Application', detail: 'A new vendor has registered.', life: 5000 });
+                        }
+                    });
+                } else {
+                    isInitialLoad.current = false;
+                }
+
+                setPendingVendors(vendors);
+                setLoadingVendors(false);
+            }, (error) => { // Added error handling for onSnapshot
+                console.error("Error listening to pending vendors:", error);
+                setLoadingVendors(false);
+            });
+
+            return () => unsubscribe();
+        }
+    }, [activeTab]);
+
+    // Removed manual fetchPendingVendors as we now use real-time listener
+    // const fetchPendingVendors = async () => { ... }
+
     const handleVendorAction = async (userId, status) => {
         try {
-            const token = await getAccessTokenSilently();
+            const token = await currentUser.getIdToken();
             await fetch(`http://localhost:3000/api/users/${userId}/status`, {
                 method: 'PUT',
                 headers: {
@@ -63,7 +119,7 @@ const AdminDashboard = () => {
                 },
                 body: JSON.stringify({ status })
             });
-            fetchPendingVendors(); // Refresh list
+            // fetchPendingVendors(); // Real-time listener will update UI automatically
         } catch (error) {
             console.error(`Error ${status} vendor:`, error);
         }
@@ -86,8 +142,44 @@ const AdminDashboard = () => {
         }
     };
 
+    // Chart Data
+    const funnelChartData = {
+        labels: ['Views', 'Quotes', 'Leads'],
+        datasets: [
+            {
+                label: 'Conversion Funnel',
+                backgroundColor: '#42A5F5',
+                data: stats ? [stats.funnel.views, stats.funnel.quotes, stats.funnel.leads] : [0, 0, 0]
+            }
+        ]
+    };
+
+    const categoryChartData = {
+        labels: stats ? stats.categoryStats.map(s => s.name) : [],
+        datasets: [
+            {
+                data: stats ? stats.categoryStats.map(s => s.value) : [],
+                backgroundColor: [
+                    "#FF6384",
+                    "#36A2EB",
+                    "#FFCE56",
+                    "#4BC0C0",
+                    "#9966FF"
+                ],
+                hoverBackgroundColor: [
+                    "#FF6384",
+                    "#36A2EB",
+                    "#FFCE56",
+                    "#4BC0C0",
+                    "#9966FF"
+                ]
+            }
+        ]
+    };
+
     return (
         <div className="min-h-screen bg-gray-100">
+            <Toast ref={toast} />
             <div className="bg-gray-800 text-white shadow">
                 <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
                     <div className="flex h-16 justify-between items-center">
@@ -118,9 +210,9 @@ const AdminDashboard = () => {
                                     Bids
                                 </button>
                             </nav>
-                            <span className="text-sm text-gray-300 border-l border-gray-600 pl-4">{user?.email}</span>
+                            <span className="text-sm text-gray-300 border-l border-gray-600 pl-4">{currentUser?.email}</span>
                             <button
-                                onClick={() => logout({ logoutParams: { returnTo: window.location.origin + '/admin/login' } })}
+                                onClick={() => logout()}
                                 className="text-sm text-gray-300 hover:text-white border border-gray-600 px-3 py-1 rounded hover:bg-gray-700"
                             >
                                 Logout
@@ -133,6 +225,48 @@ const AdminDashboard = () => {
             <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8">
                 {activeTab === 'overview' && (
                     <>
+                        {/* Analytics Section */}
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+                            <div className="bg-white p-6 rounded-lg shadow">
+                                <h3 className="text-lg font-medium text-gray-900 mb-4">Conversion Funnel</h3>
+                                <div className="h-64 flex justify-center">
+                                    <Chart type="bar" data={funnelChartData} options={{ maintainAspectRatio: false }} />
+                                </div>
+                            </div>
+                            <div className="bg-white p-6 rounded-lg shadow">
+                                <h3 className="text-lg font-medium text-gray-900 mb-4">Category Popularity</h3>
+                                <div className="h-64 flex justify-center">
+                                    <Chart type="pie" data={categoryChartData} options={{ maintainAspectRatio: false }} />
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* CAC/LTV Calculator */}
+                        <div className="bg-white p-6 rounded-lg shadow mb-8">
+                            <h3 className="text-lg font-medium text-gray-900 mb-4">Business Health Calculator</h3>
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700">Monthly Marketing Spend (BWP)</label>
+                                    <input
+                                        type="number"
+                                        value={marketingSpend}
+                                        onChange={(e) => setMarketingSpend(parseFloat(e.target.value))}
+                                        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring-primary sm:text-sm p-2 border"
+                                    />
+                                </div>
+                                <div className="bg-blue-50 p-4 rounded-md">
+                                    <dt className="text-sm font-medium text-blue-800">Est. CAC (Cost Per Acquisition)</dt>
+                                    <dd className="mt-1 text-2xl font-semibold text-blue-900">BWP {cac}</dd>
+                                    <p className="text-xs text-blue-600 mt-1">Spend / New Users ({stats?.newUsersCount || 0})</p>
+                                </div>
+                                <div className="bg-green-50 p-4 rounded-md">
+                                    <dt className="text-sm font-medium text-green-800">Est. LTV (Lifetime Value)</dt>
+                                    <dd className="mt-1 text-2xl font-semibold text-green-900">BWP {ltv}</dd>
+                                    <p className="text-xs text-green-600 mt-1">Based on avg lead value & retention</p>
+                                </div>
+                            </div>
+                        </div>
+
                         <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4 mb-8">
                             {/* Stats Cards */}
                             <div onClick={() => setExpandedCard('vendors')} className="bg-white overflow-hidden shadow rounded-lg cursor-pointer hover:shadow-lg transition-shadow">

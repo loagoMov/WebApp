@@ -1,6 +1,6 @@
 import React from 'react';
-import { Link } from 'react-router-dom';
-import { useAuth0 } from '@auth0/auth0-react';
+import { Link, useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 import { useUser } from '../context/UserContext';
 
 import PrimeNavigation from './PrimeNavigation';
@@ -12,9 +12,9 @@ import { ADMIN_EMAILS } from './ProtectedAdminRoute';
 // ...
 
 const Navbar = () => {
-    const { isAuthenticated, user } = useAuth0();
+    const { currentUser, logout } = useAuth();
     const { userProfile } = useUser();
-    const isAdmin = isAuthenticated && user?.email && ADMIN_EMAILS.includes(user.email);
+    const isAdmin = currentUser?.email && ADMIN_EMAILS.includes(currentUser.email);
 
     const menuItems = [
         { label: 'Home', ariaLabel: 'Go to home page', link: '/' },
@@ -28,11 +28,11 @@ const Navbar = () => {
 
     if (userProfile?.role === 'vendor') {
         menuItems.push({ label: 'Vendor Portal', ariaLabel: 'Vendor Portal', link: '/vendor/dashboard' });
-    } else if (!isAuthenticated || (userProfile && userProfile.role !== 'vendor')) {
-        menuItems.push({ label: 'Become a Vendor', ariaLabel: 'Vendor Registration', link: isAuthenticated ? "/vendor/register" : "/vendor/register" });
+    } else if (!currentUser || (userProfile && userProfile.role !== 'vendor')) {
+        menuItems.push({ label: 'Become a Vendor', ariaLabel: 'Vendor Registration', link: currentUser ? "/vendor/register" : "/vendor/register" });
     }
 
-    if (isAuthenticated) {
+    if (currentUser) {
         menuItems.push({ label: 'Profile', ariaLabel: 'User Profile', link: '/profile' });
     }
 
@@ -52,19 +52,8 @@ const Navbar = () => {
                         </Link>
                     </div>
 
-                    {/* Desktop Menu (Hidden on mobile/tablet if you want full replacement, or keep for desktop) */}
-                    {/* For this request, we are adding the feature to the nav. 
-                        The StaggeredMenu is typically a full-screen overlay. 
-                        We can place it here. It handles its own toggle button. */}
-
                     <div className="flex items-center">
                         <div className="hidden sm:flex sm:items-center sm:space-x-8 mr-8">
-                            {/* Keep existing desktop links if desired, or remove to fully rely on StaggeredMenu. 
-                                The user said "add this feature to the nav", implying integration. 
-                                Let's keep the main CTA visible and put the rest in the menu or just add the menu icon.
-                                Given the "StaggeredMenu" nature, it usually replaces standard nav or acts as a hamburger menu.
-                                Let's keep the AuthButtons visible for easy access and use StaggeredMenu for navigation.
-                            */}
                             <AuthButtons />
                         </div>
 
@@ -79,16 +68,29 @@ const Navbar = () => {
 };
 
 const AuthButtons = () => {
-    const { isAuthenticated, loginWithRedirect, logout, user } = useAuth0();
+    const { currentUser, logout } = useAuth();
+    const navigate = useNavigate();
 
-    if (isAuthenticated) {
+    const handleLogout = async () => {
+        try {
+            await logout();
+            navigate('/');
+        } catch (error) {
+            console.error("Failed to log out", error);
+        }
+    };
+
+    if (currentUser) {
         return (
             <div className="flex items-center space-x-4">
-                <Link to="/profile" className="text-sm text-gray-700 hover:text-primary font-medium">
-                    Hi, {user.given_name || user.name}
+                <Link
+                    to="/profile"
+                    className="bg-primary text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-blue-700 transition-colors"
+                >
+                    Profile
                 </Link>
                 <button
-                    onClick={() => logout({ logoutParams: { returnTo: window.location.origin } })}
+                    onClick={handleLogout}
                     className="text-gray-500 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium"
                 >
                     Log Out
@@ -99,12 +101,12 @@ const AuthButtons = () => {
 
     return (
         <>
-            <button
-                onClick={() => loginWithRedirect()}
+            <Link
+                to="/login"
                 className="text-gray-500 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium"
             >
                 Log In
-            </button>
+            </Link>
             <Link
                 to="/register"
                 className="bg-gray-100 text-gray-900 hover:bg-gray-200 px-3 py-2 rounded-md text-sm font-medium ml-2"

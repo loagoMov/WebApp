@@ -1,33 +1,53 @@
-import React, { useState, useEffect } from 'react';
-import { useAuth0 } from '@auth0/auth0-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { useAuth } from '../context/AuthContext';
 import { Navigate, Link } from 'react-router-dom';
 import Modal from '../components/Modal';
 import ProductForm from '../components/ProductForm';
+import { db } from '../config/firebase';
+import { doc, onSnapshot } from 'firebase/firestore';
+import { Toast } from 'primereact/toast';
 
 import { useUser } from '../context/UserContext';
 
 const VendorDashboard = () => {
-    const { user, isAuthenticated, isLoading } = useAuth0();
+    const { currentUser, logout } = useAuth();
     const { userProfile } = useUser();
     const [activeTab, setActiveTab] = useState('products');
     const [subscription, setSubscription] = useState({ tier: 'free', status: 'inactive' });
+    const toast = useRef(null);
+    const [vendorStatus, setVendorStatus] = useState(userProfile?.status || 'pending');
 
     useEffect(() => {
-        if (user) {
+        if (currentUser) {
+            // Real-time listener for vendor status
+            const unsubscribe = onSnapshot(doc(db, 'users', currentUser.uid), (doc) => {
+                if (doc.exists()) {
+                    const data = doc.data();
+                    const newStatus = data.status;
+
+                    // Check if status changed from pending to approved
+                    if (vendorStatus === 'pending' && newStatus === 'approved') {
+                        toast.current.show({ severity: 'success', summary: 'Approved!', detail: 'Your vendor account has been approved. You can now publish active products.', life: 5000 });
+                    }
+                    setVendorStatus(newStatus);
+                }
+            });
+
             // Fetch subscription status
-            fetch(`http://localhost:3000/api/subscriptions/status/${user.sub}?type=vendor`)
+            fetch(`http://localhost:3000/api/subscriptions/status/${currentUser.uid}?type=vendor`)
                 .then(res => res.json())
                 .then(data => {
                     if (data && data.tier) {
                         setSubscription(data);
                     } else {
-                        console.warn('Invalid subscription data received:', data);
                         // Keep default free tier
                     }
                 })
                 .catch(err => console.error('Error fetching subscription:', err));
+
+            return () => unsubscribe();
         }
-    }, [user]);
+    }, [currentUser, vendorStatus]);
 
     const [products, setProducts] = useState([
         { id: 1, name: 'Comprehensive Car Cover', category: 'Auto Insurance', premium: 450, status: 'Active' },
@@ -64,18 +84,15 @@ const VendorDashboard = () => {
         closeModal();
     };
 
-    if (isLoading) {
-        return <div className="flex justify-center items-center h-screen">Loading...</div>;
-    }
-
-    if (!isAuthenticated) {
+    if (!currentUser) {
         return <Navigate to="/vendor/login" replace />;
     }
 
-    const isPending = userProfile?.status === 'pending';
+    const isPending = vendorStatus === 'pending';
 
     return (
         <div className="min-h-screen bg-gray-50">
+            <Toast ref={toast} />
             {isPending && (
                 <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 fixed top-20 right-4 z-50 shadow-lg max-w-md">
                     <div className="flex">
@@ -98,7 +115,7 @@ const VendorDashboard = () => {
                         <h1 className="text-2xl font-bold text-gray-900">Vendor Portal</h1>
                         <div className="flex items-center">
                             <Link to="/profile" className="text-gray-500 mr-4 hover:text-gray-900 flex items-center">
-                                <span className="mr-2">{user.email}</span>
+                                <span className="mr-2">{currentUser.email}</span>
                                 <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                                     <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />
                                 </svg>
@@ -200,7 +217,7 @@ const VendorDashboard = () => {
                                                     },
                                                     body: JSON.stringify({
                                                         tier: tier,
-                                                        userId: user.sub,
+                                                        userId: currentUser.uid,
                                                         userType: 'vendor',
                                                         redirectUrl: window.location.href,
                                                         backUrl: window.location.href

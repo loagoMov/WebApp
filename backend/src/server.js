@@ -2,6 +2,8 @@ const express = require('express');
 const cors = require('cors');
 const dotenv = require('dotenv');
 const checkJwt = require('./middleware/auth');
+const authorize = require('./middleware/authorize');
+const { apiLimiter } = require('./middleware/rateLimit');
 
 dotenv.config();
 
@@ -10,6 +12,10 @@ const PORT = process.env.PORT || 3000;
 
 // Middleware
 app.use(cors());
+
+// Apply rate limiting to all API routes
+app.use('/api/', apiLimiter);
+
 app.use((req, res, next) => {
     if (req.originalUrl === '/api/subscriptions/webhook') {
         next();
@@ -37,14 +43,16 @@ app.get('/api/health', (req, res) => {
     res.status(200).json({ status: 'ok' });
 });
 
-// Protected Routes
+// Protected Routes with Authorization
+// app.use('/api/auth', checkJwt, require('./routes/auth')); // Removed during Firebase migration
 app.use('/api/vendors', checkJwt, require('./routes/vendors'));
-app.use('/api/vendors/:vendorId/products', checkJwt, require('./routes/products'));
-app.use('/api/leads', checkJwt, require('./routes/leads')); // For creating leads (user)
-app.use('/api/vendors/:vendorId/leads', checkJwt, require('./routes/leads')); // For viewing leads (vendor)
-app.use('/api/vendors/:vendorId/bids', checkJwt, require('./routes/bids'));
+app.use('/api/vendors/:vendorId/products', checkJwt, authorize({ roles: ['vendor', 'admin'] }), require('./routes/products'));
+app.use('/api/leads', checkJwt, require('./routes/leads'));
+app.use('/api/vendors/:vendorId/leads', checkJwt, authorize({ roles: ['vendor', 'admin'] }), require('./routes/leads'));
+app.use('/api/vendors/:vendorId/bids', checkJwt, authorize({ roles: ['vendor', 'admin'] }), require('./routes/bids'));
 app.use('/api/quotes', checkJwt, require('./routes/quotes'));
 app.use('/api/users', checkJwt, require('./routes/users'));
+app.use('/api/analytics', require('./routes/analytics'));
 
 // AI Service Proxy
 // AI Service Proxy
