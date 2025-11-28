@@ -1,14 +1,13 @@
 import React, { useState } from 'react';
-import { useAuth0 } from '@auth0/auth0-react';
+import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import { useUser } from '../context/UserContext';
-import axios from 'axios';
+import { db } from '../config/firebase';
+import { doc, updateDoc, setDoc } from 'firebase/firestore';
 
 const BecomeVendorPage = () => {
-    const { user, isAuthenticated, getAccessTokenSilently, loginWithRedirect } = useAuth0();
-    const { refreshProfile } = useUser();
+    const { currentUser, loading } = useAuth();
     const navigate = useNavigate();
-    const [loading, setLoading] = useState(false);
+    const [isSubmitting, setIsSubmitting] = useState(false);
     const [error, setError] = useState('');
 
     const [formData, setFormData] = useState({
@@ -25,51 +24,115 @@ const BecomeVendorPage = () => {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        setLoading(true);
+        setIsSubmitting(true);
         setError('');
 
-        if (!isAuthenticated) {
-            loginWithRedirect({
-                appState: { returnTo: '/vendor/apply' }
-            });
+        if (!currentUser) {
+            navigate('/login', { state: { returnTo: '/vendor/apply' } });
             return;
         }
 
         try {
-            const token = await getAccessTokenSilently();
+            // Update user document in Firestore with vendor application
+            const userRef = doc(db, 'users', currentUser.uid);
 
-            // Prepare data for backend
-            const apiFormData = new FormData();
-            apiFormData.append('fullName', formData.contactPerson);
-            apiFormData.append('phone', formData.phone);
-            apiFormData.append('location', formData.address);
-            apiFormData.append('role', 'vendor'); // This triggers status='pending' in backend
-            apiFormData.append('companyName', formData.companyName);
-            apiFormData.append('taxId', formData.taxId);
-
-            await axios.put(`http://localhost:3000/api/users/${user.sub}`, apiFormData, {
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'multipart/form-data'
-                }
+            await updateDoc(userRef, {
+                role: 'vendor',
+                status: 'pending', // This is the key field admin dashboard looks for!
+                companyName: formData.companyName,
+                taxId: formData.taxId,
+                fullName: formData.contactPerson,
+                phone: formData.phone,
+                location: formData.address,
+                updatedAt: new Date().toISOString(),
+                appliedAt: new Date().toISOString()
             });
 
-            // Refresh profile to update context
-            await refreshProfile();
+            // Send email notification to admins
+            try {
+                await fetch('http://localhost:3000/api/users/notify-vendor-application', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        vendorData: {
+                            userId: currentUser.uid,
+                            email: currentUser.email,
+                            fullName: formData.contactPerson,
+                            companyName: formData.companyName,
+                            phone: formData.phone,
+                            createdAt: new Date().toISOString()
+                        }
+                    })
+                });
+            } catch (emailError) {
+                console.error('Failed to send email notification:', emailError);
+                // Don't fail the whole application if email fails
+            }
 
-            // Redirect to dashboard
-            navigate('/vendor/dashboard');
+            alert('Application submitted successfully! You will be notified once approved.');
+            navigate('/');
 
         } catch (err) {
             console.error("Error applying for vendor:", err);
-            setError('Failed to submit application. Please try again.');
+
+            // If updateDoc fails (document doesn't exist), try setDoc
+            if (err.code === 'not-found') {
+                try {
+                    const userRef = doc(db, 'users', currentUser.uid);
+                    await setDoc(userRef, {
+                        email: currentUser.email,
+                        role: 'vendor',
+                        status: 'pending',
+                        companyName: formData.companyName,
+                        taxId: formData.taxId,
+                        fullName: formData.contactPerson,
+                        phone: formData.phone,
+                        location: formData.address,
+                        createdAt: new Date().toISOString(),
+                        updatedAt: new Date().toISOString(),
+                        appliedAt: new Date().toISOString()
+                    });
+
+                    // Send email notification to admins
+                    try {
+                        await fetch('http://localhost:3000/api/users/notify-vendor-application', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({
+                                vendorData: {
+                                    userId: currentUser.uid,
+                                    email: currentUser.email,
+                                    fullName: formData.contactPerson,
+                                    companyName: formData.companyName,
+                                    phone: formData.phone,
+                                    createdAt: new Date().toISOString()
+                                }
+                            })
+                        });
+                    } catch (emailError) {
+                        console.error('Failed to send email notification:', emailError);
+                    }
+
+                    alert('Application submitted successfully! You will be notified once approved.');
+                    navigate('/');
+                } catch (setErr) {
+                    console.error("Error creating vendor application:", setErr);
+                    setError('Failed to submit application. Please try again.');
+                }
+            } else {
+                setError('Failed to submit application. Please try again.');
+            }
         } finally {
-            setLoading(false);
+            setIsSubmitting(false);
         }
     };
 
     return (
-        <div className="min-h-screen bg-gray-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
+        <div className="min-h-screen bg-[#F5F1E6] dark:bg-[#003366] flex flex-col justify-center py-12 sm:px-6 lg:px-8 transition-colors duration-300">
             <div className="sm:mx-auto sm:w-full sm:max-w-md">
                 <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
                     Apply to Become a Vendor
@@ -80,7 +143,7 @@ const BecomeVendorPage = () => {
             </div>
 
             <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
-                <div className="bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10">
+                <div className="bg-white dark:bg-[#002244] py-8 px-4 shadow sm:rounded-lg sm:px-10 transition-colors duration-300">
                     {error && (
                         <div className="mb-4 bg-red-50 border-l-4 border-red-400 p-4">
                             <div className="flex">
@@ -179,10 +242,10 @@ const BecomeVendorPage = () => {
                         <div>
                             <button
                                 type="submit"
-                                disabled={loading}
-                                className={`w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white ${loading ? 'bg-gray-400 cursor-not-allowed' : 'bg-primary hover:bg-blue-700'} focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary`}
+                                disabled={isSubmitting || loading}
+                                className={`w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white ${isSubmitting || loading ? 'bg-gray-400 cursor-not-allowed' : 'bg-primary hover:bg-blue-700'} focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary`}
                             >
-                                {loading ? 'Submitting...' : 'Submit Application'}
+                                {isSubmitting ? 'Submitting...' : 'Submit Application'}
                             </button>
                         </div>
                     </form>

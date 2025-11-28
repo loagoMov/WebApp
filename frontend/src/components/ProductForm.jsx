@@ -1,18 +1,24 @@
 import React, { useState } from 'react';
+import imageCompression from 'browser-image-compression';
 
 const ProductForm = ({ onSubmit, onCancel, initialData }) => {
-    const [formData, setFormData] = useState(initialData || {
-        name: '',
-        category: 'Auto',
-        premium: '',
-        status: 'Draft',
-        requirements: []
-    });
+    const [formData, setFormData] = useState(() => {
+        // Ensure all required fields exist with defaults
+        const defaults = {
+            name: '',
+            category: 'Auto',
+            premium: '',
+            status: 'Draft',
+            requirements: []
+        };
 
-    // Ensure requirements is always an array if initialData didn't have it
-    if (initialData && !formData.requirements) {
-        setFormData(prev => ({ ...prev, requirements: [] }));
-    }
+        // Merge initialData with defaults, ensuring requirements is always an array
+        return {
+            ...defaults,
+            ...initialData,
+            requirements: initialData?.requirements || []
+        };
+    });
 
     const handleChange = (e) => {
         const { name, value } = e.target;
@@ -110,7 +116,7 @@ const ProductForm = ({ onSubmit, onCancel, initialData }) => {
 
             <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Policy Requirements</label>
-                {formData.requirements.map((req, index) => (
+                {(formData.requirements || []).map((req, index) => (
                     <div key={index} className="flex gap-2 mb-2">
                         <input
                             type="text"
@@ -140,6 +146,63 @@ const ProductForm = ({ onSubmit, onCancel, initialData }) => {
                     </svg>
                     Add Requirement
                 </button>
+            </div>
+
+            <div>
+                <label className="block text-sm font-medium text-gray-700">Policy Document (PDF/Text/Image)</label>
+                <div className="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 border-dashed rounded-md relative">
+                    <div className="space-y-1 text-center">
+                        <svg className="mx-auto h-12 w-12 text-gray-400" stroke="currentColor" fill="none" viewBox="0 0 48 48" aria-hidden="true">
+                            <path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
+                        </svg>
+                        <div className="flex text-sm text-gray-600 justify-center">
+                            <label htmlFor="file-upload" className="relative cursor-pointer bg-white rounded-md font-medium text-primary hover:text-blue-500 focus-within:outline-none focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-primary">
+                                <span>Upload a file</span>
+                                <input id="file-upload" name="file-upload" type="file" className="sr-only" accept=".txt,.md,.pdf,.jpg,.jpeg,.png" onChange={async (e) => {
+                                    if (e.target.files && e.target.files[0]) {
+                                        const file = e.target.files[0];
+                                        let fileToUpload = file;
+
+                                        // Compress if image
+                                        if (file.type.startsWith('image/')) {
+                                            try {
+                                                const options = {
+                                                    maxSizeMB: 1,
+                                                    maxWidthOrHeight: 1920,
+                                                    useWebWorker: true
+                                                };
+                                                fileToUpload = await imageCompression(file, options);
+                                                console.log(`Compressed file from ${file.size / 1024 / 1024} MB to ${fileToUpload.size / 1024 / 1024} MB`);
+                                            } catch (error) {
+                                                console.error("Compression failed:", error);
+                                            }
+                                        }
+
+                                        setFormData(prev => ({ ...prev, policyFile: fileToUpload, policyFileName: fileToUpload.name }));
+                                    }
+                                }} />
+                            </label>
+                            <p className="pl-1">or drag and drop</p>
+                        </div>
+                        <p className="text-xs text-gray-500">
+                            TXT, MD, PDF, JPG, PNG up to 10MB
+                        </p>
+                    </div>
+                    {(formData.policyFile || formData.policyFileName) && (
+                        <div className="absolute inset-0 bg-white bg-opacity-90 flex flex-col items-center justify-center rounded-md">
+                            <p className="text-sm font-medium text-gray-900 mb-2">
+                                {formData.policyFile?.name || formData.policyFileName}
+                            </p>
+                            <button
+                                type="button"
+                                onClick={() => setFormData(prev => ({ ...prev, policyFile: null, policyFileName: null }))}
+                                className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-full shadow-sm text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+                            >
+                                Remove File
+                            </button>
+                        </div>
+                    )}
+                </div>
             </div>
 
             <div className="pt-4 flex justify-end space-x-3">

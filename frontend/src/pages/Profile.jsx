@@ -1,14 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { useAuth0 } from '@auth0/auth0-react';
+import { useAuth } from '../context/AuthContext';
 import axios from 'axios';
 import { db, storage } from '../config/firebase';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import CountryCodeSelect from '../components/CountryCodeSelect';
 import { Skeleton } from 'primereact/skeleton';
+import imageCompression from 'browser-image-compression';
 
 const Profile = () => {
-    const { user, isAuthenticated, isLoading, getAccessTokenSilently, logout } = useAuth0();
+    const { currentUser, loading, logout } = useAuth();
     const [formData, setFormData] = useState({
         fullName: '',
         email: '',
@@ -27,46 +28,46 @@ const Profile = () => {
 
     useEffect(() => {
         const fetchUserData = async () => {
-            if (user) {
+            if (currentUser) {
                 // Fetch Firestore Data
-                const userRef = doc(db, 'users', user.sub);
+                const userRef = doc(db, 'users', currentUser.uid);
                 const userSnap = await getDoc(userRef);
 
                 if (userSnap.exists()) {
                     const data = userSnap.data();
                     setFormData({
-                        fullName: data.fullName || user.name || '',
-                        email: user.email || '',
-                        countryCode: '+267', // Default, or logic to extract if needed
+                        fullName: data.fullName || data.firstName + ' ' + (data.lastName || '') || currentUser.displayName || '',
+                        email: currentUser.email || data.email || '',
+                        countryCode: data.countryCode || '+267',
                         phone: data.phone || '',
                         location: data.location || '',
-                        photoURL: data.photoURL || user.picture || ''
+                        photoURL: data.photoURL || currentUser.photoURL || ''
                     });
                 } else {
-                    // Initialize with Auth0 data if no Firestore doc exists
+                    // Initialize with Firebase Auth data if no Firestore doc exists
                     setFormData({
-                        fullName: user.name || '',
-                        email: user.email || '',
+                        fullName: currentUser.displayName || '',
+                        email: currentUser.email || '',
                         countryCode: '+267',
                         phone: '',
                         location: '',
-                        photoURL: user.picture || ''
+                        photoURL: currentUser.photoURL || ''
                     });
                 }
 
                 // Fetch Subscription Data
                 try {
-                    const subRes = await axios.get(`http://localhost:3000/api/subscriptions/status/${user.sub}?type=user`);
+                    const subRes = await axios.get(`http://localhost:3000/api/subscriptions/status/${currentUser.uid}?type=user`);
                     if (subRes.data) setSubscription(subRes.data);
                 } catch (error) {
                     console.error('Error fetching subscription:', error);
                 }
 
-                // Fetch Saved Quotes
+                // Fetch Saved Quotes (using Firebase Auth token)
                 try {
                     setLoadingQuotes(true);
-                    const token = await getAccessTokenSilently();
-                    const quotesRes = await axios.get(`http://localhost:3000/api/quotes/${user.sub}`, {
+                    const token = await currentUser.getIdToken();
+                    const quotesRes = await axios.get(`http://localhost:3000/api/quotes/${currentUser.uid}`, {
                         headers: { Authorization: `Bearer ${token}` }
                     });
                     setSavedQuotes(quotesRes.data);
@@ -79,17 +80,39 @@ const Profile = () => {
         };
 
         fetchUserData();
-    }, [user]);
+    }, [currentUser]);
 
     const handleChange = (e) => {
         const { name, value } = e.target;
         setFormData(prev => ({ ...prev, [name]: value }));
     };
 
-    const handleFileChange = (e) => {
+    const handleFileChange = async (e) => {
         if (e.target.files[0]) {
-            setFile(e.target.files[0]);
-            setFormData(prev => ({ ...prev, photoURL: URL.createObjectURL(e.target.files[0]) }));
+            const file = e.target.files[0];
+
+            try {
+                // Compression options
+                const options = {
+                    maxSizeMB: 1, // Maximum size in MB
+                    maxWidthOrHeight: 800, // Max dimension
+                    useWebWorker: true,
+                    fileType: 'image/jpeg' // Convert to JPEG for better compression
+                };
+
+                // Compress the image
+                const compressedFile = await imageCompression(file, options);
+                console.log(`Original size: ${(file.size / 1024 / 1024).toFixed(2)}MB`);
+                console.log(`Compressed size: ${(compressedFile.size / 1024 / 1024).toFixed(2)}MB`);
+
+                setFile(compressedFile);
+                setFormData(prev => ({ ...prev, photoURL: URL.createObjectURL(compressedFile) }));
+            } catch (error) {
+                console.error('Error compressing image:', error);
+                // Fallback to original file if compression fails
+                setFile(file);
+                setFormData(prev => ({ ...prev, photoURL: URL.createObjectURL(file) }));
+            }
         }
     };
 
@@ -147,21 +170,28 @@ const Profile = () => {
         try {
             let photoURL = formData.photoURL;
             if (file) {
-                const storageRef = ref(storage, `profile_photos/${user.sub}`);
+                const storageRef = ref(storage, `profile_photos/${currentUser.uid}`);
                 await uploadBytes(storageRef, file);
                 photoURL = await getDownloadURL(storageRef);
             }
 
-            const userRef = doc(db, 'users', user.sub);
-            await setDoc(userRef, {
-                ...formData,
+            const userRef = doc(db, 'users', currentUser.uid);
+            await updateDoc(userRef, {
+                fullName: formData.fullName,
+                phone: formData.phone,
+                countryCode: formData.countryCode,
+                location: formData.location,
                 photoURL,
                 updatedAt: new Date().toISOString()
-            }, { merge: true });
+            });
 
+            // Update local state
+            setFormData(prev => ({ ...prev, photoURL }));
             setIsEditing(false);
+            alert('Profile updated successfully!');
         } catch (error) {
             console.error("Error updating profile:", error);
+            alert('Failed to update profile. Please try again.');
         } finally {
             setUploading(false);
         }
@@ -174,13 +204,15 @@ const Profile = () => {
     const handleDeleteAccount = async () => {
         if (window.confirm("Are you sure you want to delete your account? This action cannot be undone.")) {
             try {
-                const token = await getAccessTokenSilently();
-                await axios.delete(`http://localhost:3000/api/users/${user.sub}`, {
+                const token = await currentUser.getIdToken();
+                await axios.delete(`http://localhost:3000/api/users/${currentUser.uid}`, {
                     headers: { Authorization: `Bearer ${token}` }
                 });
-                logout({ returnTo: window.location.origin });
+                await logout();
+                window.location.href = '/';
             } catch (error) {
                 console.error("Error deleting account:", error);
+                alert('Failed to delete account. Please try again.');
             }
         }
     };
@@ -188,12 +220,13 @@ const Profile = () => {
     const handleDeleteQuote = async (quoteId) => {
         if (window.confirm("Are you sure you want to delete this saved quote?")) {
             try {
-                const token = await getAccessTokenSilently();
+                const token = await currentUser.getIdToken();
                 await axios.delete(`http://localhost:3000/api/quotes/${quoteId}`, {
                     headers: { Authorization: `Bearer ${token}` }
                 });
                 // Remove from local state
                 setSavedQuotes(prev => prev.filter(q => q.id !== quoteId));
+                alert('Quote deleted successfully!');
             } catch (error) {
                 console.error("Error deleting quote:", error);
                 alert("Failed to delete quote. Please try again.");

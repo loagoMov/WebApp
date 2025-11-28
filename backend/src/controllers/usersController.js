@@ -1,5 +1,4 @@
 const { db, admin } = require('../config/firebase');
-const managementClient = require('../config/auth0');
 
 const updateProfile = async (req, res) => {
     try {
@@ -84,30 +83,141 @@ const getProfile = async (req, res) => {
 };
 
 const deleteUser = async (req, res) => {
+    const { deleteUserFiles, deleteVendorFiles } = require('../services/storageService');
+
     try {
         const { userId } = req.params;
+        console.log(`Starting deletion process for user ${userId}`);
 
-        // 1. Delete from Firestore
-        await db.collection('users').doc(userId).delete();
+        // 1. Get user data to determine role and cleanup needs
+        const userDoc = await db.collection('users').doc(userId).get();
 
-        // 2. Delete from Auth0 (if configured)
-        if (managementClient) {
-            try {
-                await managementClient.users.delete(userId);
-                console.log(`User ${userId} deleted from Auth0`);
-            } catch (auth0Error) {
-                console.error('Error deleting user from Auth0:', auth0Error.message);
-                console.warn('Ensure the Auth0 Client has "Client Credentials" grant and access to Management API.');
-                // We don't fail the request if Auth0 deletion fails, but we log it.
-            }
+        if (!userDoc.exists) {
+            console.log(`User ${userId} not found in Firestore, proceeding with Auth deletion only`);
         } else {
-            console.warn('Skipping Auth0 deletion: Management Client not initialized');
+            const userData = userDoc.data();
+            const isVendor = userData.role === 'vendor';
+
+            // 2. If vendor, delete all vendor-related data
+            if (isVendor) {
+                console.log(`User ${userId} is a vendor, performing vendor cleanup...`);
+
+                // Delete products
+                const productsSnapshot = await db.collection('insurance_products')
+                    .where('vendorId', '==', userId)
+                    .get();
+
+                const productDeletePromises = [];
+                productsSnapshot.forEach(doc => {
+                    productDeletePromises.push(doc.ref.delete());
+                });
+                await Promise.all(productDeletePromises);
+                console.log(`Deleted ${productsSnapshot.size} products for vendor ${userId}`);
+
+                // Delete bids
+                const bidsSnapshot = await db.collection('bids')
+                    .where('vendorId', '==', userId)
+                    .get();
+
+                const bidDeletePromises = [];
+                bidsSnapshot.forEach(doc => {
+                    bidDeletePromises.push(doc.ref.delete());
+                });
+                await Promise.all(bidDeletePromises);
+                console.log(`Deleted ${bidsSnapshot.size} bids for vendor ${userId}`);
+
+                // Delete leads where vendor is the recipient
+                const leadsSnapshot = await db.collection('leads')
+                    .where('vendorId', '==', userId)
+                    .get();
+
+                const leadDeletePromises = [];
+                leadsSnapshot.forEach(doc => {
+                    leadDeletePromises.push(doc.ref.delete());
+                });
+                await Promise.all(leadDeletePromises);
+                console.log(`Deleted ${leadsSnapshot.size} leads for vendor ${userId}`);
+
+                // Delete vendor files from storage (policy documents, etc.)
+                try {
+                    await deleteVendorFiles(userId);
+                } catch (storageError) {
+                    console.error('Error deleting vendor files:', storageError);
+                    // Continue with deletion even if storage cleanup fails
+                }
+            }
+
+            // 3. Delete user-related data (for all users)
+
+            // Delete quotes
+            const quotesSnapshot = await db.collection('quotes')
+                .where('userId', '==', userId)
+                .get();
+
+            const quoteDeletePromises = [];
+            quotesSnapshot.forEach(doc => {
+                quoteDeletePromises.push(doc.ref.delete());
+            });
+            await Promise.all(quoteDeletePromises);
+            console.log(`Deleted ${quotesSnapshot.size} quotes for user ${userId}`);
+
+            // Delete leads created by this user
+            const userLeadsSnapshot = await db.collection('leads')
+                .where('userId', '==', userId)
+                .get();
+
+            const userLeadDeletePromises = [];
+            userLeadsSnapshot.forEach(doc => {
+                userLeadDeletePromises.push(doc.ref.delete());
+            });
+            await Promise.all(userLeadDeletePromises);
+            console.log(`Deleted ${userLeadsSnapshot.size} user leads for ${userId}`);
+
+            // Delete payments/subscriptions
+            const paymentsSnapshot = await db.collection('payments')
+                .where('userId', '==', userId)
+                .get();
+
+            const paymentDeletePromises = [];
+            paymentsSnapshot.forEach(doc => {
+                paymentDeletePromises.push(doc.ref.delete());
+            });
+            await Promise.all(paymentDeletePromises);
+            console.log(`Deleted ${paymentsSnapshot.size} payment records for user ${userId}`);
+
+            // 4. Delete user files from storage (profile photos, etc.)
+            try {
+                await deleteUserFiles(userId);
+            } catch (storageError) {
+                console.error('Error deleting user files:', storageError);
+                // Continue with deletion even if storage cleanup fails
+            }
         }
 
-        res.json({ message: 'User account deleted successfully' });
+        // 5. Delete user document from Firestore
+        await db.collection('users').doc(userId).delete();
+        console.log(`Deleted user document for ${userId}`);
+
+        // 6. Delete from Firebase Auth
+        try {
+            await admin.auth().deleteUser(userId);
+            console.log(`User ${userId} deleted from Firebase Auth`);
+        } catch (authError) {
+            console.error('Error deleting user from Firebase Auth:', authError);
+            // If user not found in Auth, it might have been already deleted or never existed there
+            if (authError.code !== 'auth/user-not-found') {
+                throw authError;
+            }
+        }
+
+        console.log(`Successfully deleted all data for user ${userId}`);
+        res.json({
+            message: 'User account and all associated data deleted successfully',
+            userId: userId
+        });
     } catch (error) {
         console.error('Error deleting user:', error);
-        res.status(500).json({ error: 'Failed to delete user account' });
+        res.status(500).json({ error: 'Failed to delete user account', details: error.message });
     }
 };
 

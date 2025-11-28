@@ -16,7 +16,6 @@ import SubscriptionSuccess from './pages/SubscriptionSuccess';
 import SubscriptionCancel from './pages/SubscriptionCancel';
 import OnboardingPage from './pages/OnboardingPage';
 import ProtectedAdminRoute from './components/ProtectedAdminRoute';
-import AuthProvider from './auth/AuthProvider';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import VendorRegisterPage from './pages/VendorRegisterPage';
@@ -24,6 +23,7 @@ import InactivityHandler from './components/InactivityHandler';
 import AboutPage from './pages/AboutPage';
 import ThemeToggle from './components/ThemeToggle';
 import BecomeVendorPage from './pages/BecomeVendorPage';
+import PhoneLoginPage from './pages/PhoneLoginPage';
 
 import { AnimatePresence } from 'motion/react';
 import { useLocation } from 'react-router-dom';
@@ -61,6 +61,7 @@ const AnimatedRoutes = () => {
         <Route path="/register" element={<PageTransition><RegisterPage /></PageTransition>} />
         <Route path="/vendor/register" element={<PageTransition><VendorRegisterPage /></PageTransition>} />
         <Route path="/vendor/apply" element={<PageTransition><BecomeVendorPage /></PageTransition>} />
+        <Route path="/phone-login" element={<PageTransition><PhoneLoginPage /></PageTransition>} />
       </Routes>
     </AnimatePresence>
   );

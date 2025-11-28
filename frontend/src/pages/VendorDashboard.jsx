@@ -3,8 +3,11 @@ import { useAuth } from '../context/AuthContext';
 import { Navigate, Link } from 'react-router-dom';
 import Modal from '../components/Modal';
 import ProductForm from '../components/ProductForm';
-import { db } from '../config/firebase';
-import { doc, onSnapshot } from 'firebase/firestore';
+import { db, storage } from '../config/firebase';
+import { doc, onSnapshot, collection, addDoc, updateDoc, deleteDoc, query, where, getDocs } from 'firebase/firestore';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import BidForm from '../components/BidForm';
+import { Chart } from 'primereact/chart';
 import { Toast } from 'primereact/toast';
 
 import { useUser } from '../context/UserContext';
@@ -49,16 +52,45 @@ const VendorDashboard = () => {
         }
     }, [currentUser, vendorStatus]);
 
-    const [products, setProducts] = useState([
-        { id: 1, name: 'Comprehensive Car Cover', category: 'Auto Insurance', premium: 450, status: 'Active' },
-        { id: 2, name: 'Home Contents Basic', category: 'Home Insurance', premium: 200, status: 'Active' },
-    ]);
+    const [products, setProducts] = useState([]);
     const [leads, setLeads] = useState([
         { id: 1, customer: 'Kabo D.', interest: 'Car Insurance', date: '2023-10-25', status: 'New' },
         { id: 2, customer: 'Tshepo M.', interest: 'Life Insurance', date: '2023-10-24', status: 'Contacted' },
     ]);
     const [isProductModalOpen, setIsProductModalOpen] = useState(false);
     const [editingProduct, setEditingProduct] = useState(null);
+
+
+
+    // Bidding State
+    const [bids, setBids] = useState([]);
+    const [isBidModalOpen, setIsBidModalOpen] = useState(false);
+
+    // Fetch products and bids from Firestore
+    useEffect(() => {
+        const fetchData = async () => {
+            if (currentUser) {
+                try {
+                    // Fetch Products
+                    const qProducts = query(collection(db, 'insurance_products'), where('vendorId', '==', currentUser.uid));
+                    const productsSnap = await getDocs(qProducts);
+                    const productsList = productsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                    setProducts(productsList);
+
+                    // Fetch Bids
+                    const qBids = query(collection(db, 'bids'), where('vendorId', '==', currentUser.uid));
+                    const bidsSnap = await getDocs(qBids);
+                    const bidsList = bidsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                    setBids(bidsList);
+                } catch (error) {
+                    console.error("Error fetching data:", error);
+                    toast.current.show({ severity: 'error', summary: 'Error', detail: 'Failed to load dashboard data.' });
+                }
+            }
+        };
+
+        fetchData();
+    }, [currentUser]);
 
     const openAddModal = () => {
         setEditingProduct(null);
@@ -70,18 +102,136 @@ const VendorDashboard = () => {
         setIsProductModalOpen(true);
     };
 
+    const openBidModal = () => {
+        // Check Subscription Limits
+        const tier = subscription.tier || 'free';
+        const activeBidsCount = bids.filter(b => b.status === 'active' || b.status === 'pending').length;
+
+        let limit = 0;
+        if (tier === 'vendor_basic') limit = 5;
+        else if (tier === 'vendor_pro') limit = 9999;
+
+        if (activeBidsCount >= limit) {
+            toast.current.show({
+                severity: 'warn',
+                summary: 'Limit Reached',
+                detail: `You have reached your bid limit for the ${tier} plan. Upgrade to place more bids.`
+            });
+            return;
+        }
+
+        setIsBidModalOpen(true);
+    };
+
+    const handlePlaceBid = async (bidData) => {
+        try {
+            const newBid = {
+                ...bidData,
+                vendorId: currentUser.uid,
+                vendorName: userProfile?.companyName || currentUser.email,
+                status: 'pending',
+                createdAt: new Date().toISOString()
+            };
+
+            const docRef = await addDoc(collection(db, 'bids'), newBid);
+            setBids([...bids, { ...newBid, id: docRef.id }]);
+
+            setIsBidModalOpen(false);
+            toast.current.show({ severity: 'success', summary: 'Bid Placed', detail: 'Your bid has been submitted for approval.' });
+        } catch (error) {
+            console.error("Error placing bid:", error);
+            toast.current.show({ severity: 'error', summary: 'Error', detail: 'Failed to place bid.' });
+        }
+    };
+
     const closeModal = () => {
         setIsProductModalOpen(false);
         setEditingProduct(null);
     };
 
-    const handleSaveProduct = (productData) => {
-        if (editingProduct) {
-            setProducts(products.map(p => p.id === editingProduct.id ? { ...productData, id: p.id } : p));
-        } else {
-            setProducts([...products, { ...productData, id: products.length + 1, status: 'Active' }]);
+    const handleSaveProduct = async (productData) => {
+        try {
+            let policyUrl = productData.policyUrl || '';
+            let policyFileName = productData.policyFileName || '';
+
+            // 1. If there's a new policy file, upload it to Storage & AI Service
+            if (productData.policyFile) {
+                const file = productData.policyFile;
+                const storageRef = ref(storage, `vendors/${currentUser.uid}/policies/${file.name}`);
+
+                // Upload to Firebase Storage
+                const snapshot = await uploadBytes(storageRef, file);
+                policyUrl = await getDownloadURL(snapshot.ref);
+                policyFileName = file.name;
+
+                // Upload to AI Service
+                const formData = new FormData();
+                formData.append('file', file);
+                formData.append('vendorId', currentUser.uid);
+
+                try {
+                    const uploadRes = await fetch('http://localhost:3000/api/upload-policy', {
+                        method: 'POST',
+                        body: formData
+                    });
+
+                    if (uploadRes.ok) {
+                        toast.current.show({ severity: 'success', summary: 'Policy Processed', detail: 'AI ingestion successful.' });
+                    } else {
+                        console.warn("AI ingestion failed");
+                    }
+                } catch (aiError) {
+                    console.error("AI Service upload error:", aiError);
+                }
+            } else if (productData.policyFile === null) {
+                // Explicitly removed
+                policyUrl = '';
+                policyFileName = '';
+            }
+
+            // 2. Save product to Firestore
+            const { policyFile, ...cleanProductData } = productData;
+            const finalProductData = {
+                ...cleanProductData,
+                policyUrl,
+                policyFileName
+            };
+
+            if (editingProduct) {
+                const productRef = doc(db, 'insurance_products', editingProduct.id);
+                await updateDoc(productRef, finalProductData);
+
+                setProducts(products.map(p => p.id === editingProduct.id ? { ...finalProductData, id: p.id } : p));
+                toast.current.show({ severity: 'success', summary: 'Success', detail: 'Product updated successfully.' });
+            } else {
+                const newProductData = {
+                    ...finalProductData,
+                    vendorId: currentUser.uid,
+                    createdAt: new Date().toISOString()
+                };
+                const docRef = await addDoc(collection(db, 'insurance_products'), newProductData);
+
+                setProducts([...products, { ...newProductData, id: docRef.id }]);
+                toast.current.show({ severity: 'success', summary: 'Success', detail: 'Product created successfully.' });
+            }
+            closeModal();
+        } catch (error) {
+            console.error("Error saving product:", error);
+            toast.current.show({ severity: 'error', summary: 'Error', detail: 'Failed to save product.' });
         }
-        closeModal();
+    };
+
+    const handleDeleteProduct = async (productId) => {
+        if (window.confirm('Are you sure you want to delete this product?')) {
+            try {
+                await deleteDoc(doc(db, 'insurance_products', productId));
+                setProducts(products.filter(p => p.id !== productId));
+                toast.current.show({ severity: 'success', summary: 'Success', detail: 'Product deleted successfully.' });
+            } catch (error) {
+                console.error("Error deleting product:", error);
+                toast.current.show({ severity: 'error', summary: 'Error', detail: 'Failed to delete product.' });
+            }
+        }
     };
 
     if (!currentUser) {
@@ -89,6 +239,34 @@ const VendorDashboard = () => {
     }
 
     const isPending = vendorStatus === 'pending';
+
+    const handleResendApplication = async () => {
+        try {
+            const token = await currentUser.getIdToken();
+
+            await fetch('http://localhost:3000/api/users/notify-vendor-application', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({
+                    vendorData: {
+                        userId: currentUser.uid,
+                        email: currentUser.email,
+                        fullName: userProfile?.fullName || '',
+                        companyName: userProfile?.companyName || '',
+                        phone: userProfile?.phone || '',
+                        createdAt: userProfile?.appliedAt || new Date().toISOString()
+                    }
+                })
+            });
+            toast.current.show({ severity: 'success', summary: 'Notification Sent', detail: 'Admin has been notified of your application.' });
+        } catch (error) {
+            console.error('Failed to resend application:', error);
+            toast.current.show({ severity: 'error', summary: 'Failed', detail: 'Could not send notification. Please try again.' });
+        }
+    };
 
     return (
         <div className="min-h-screen bg-gray-50">
@@ -101,10 +279,16 @@ const VendorDashboard = () => {
                                 <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
                             </svg>
                         </div>
-                        <div className="ml-3">
+                        <div className="ml-3 flex-1">
                             <p className="text-sm text-yellow-700">
                                 Your account is awaiting approval. You can draft products but they won't be visible to users until approved.
                             </p>
+                            <button
+                                onClick={handleResendApplication}
+                                className="mt-2 text-xs bg-yellow-100 hover:bg-yellow-200 text-yellow-800 font-medium px-3 py-1 rounded border border-yellow-300 transition-colors"
+                            >
+                                📧 Resend Notification to Admin
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -281,6 +465,12 @@ const VendorDashboard = () => {
                                             >
                                                 Edit
                                             </button>
+                                            <button
+                                                onClick={() => handleDeleteProduct(product.id)}
+                                                className="ml-4 text-red-400 hover:text-red-500"
+                                            >
+                                                Delete
+                                            </button>
                                         </div>
                                     </li>
                                 ))}
@@ -318,14 +508,120 @@ const VendorDashboard = () => {
                 )}
 
                 {activeTab === 'bids' && (
-                    <div className="text-center py-10 bg-white rounded-lg shadow">
-                        <h3 className="text-lg font-medium text-gray-900">Bidding Dashboard</h3>
-                        <p className="text-gray-500 mt-2">Manage your bids for premium placement.</p>
-                        <button className="mt-4 bg-primary text-white px-4 py-2 rounded-md text-sm">Create New Bid</button>
+                    <div>
+                        <div className="flex justify-between mb-4">
+                            <h2 className="text-lg font-medium text-gray-900">My Bids</h2>
+                            <button
+                                onClick={openBidModal}
+                                className="bg-primary hover:bg-blue-700 text-white px-4 py-2 rounded-md text-sm"
+                            >
+                                + Place Bid
+                            </button>
+                        </div>
+                        <div className="bg-white shadow overflow-hidden sm:rounded-md">
+                            {bids.length === 0 ? (
+                                <div className="p-6 text-center text-gray-500">No bids placed yet.</div>
+                            ) : (
+                                <table className="min-w-full divide-y divide-gray-200">
+                                    <thead className="bg-gray-50">
+                                        <tr>
+                                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Product</th>
+                                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Amount (BWP)</th>
+                                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Duration</th>
+                                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="bg-white divide-y divide-gray-200">
+                                        {bids.map((bid) => (
+                                            <tr key={bid.id}>
+                                                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{bid.productName}</td>
+                                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{bid.bidAmount}</td>
+                                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{bid.duration} Days</td>
+                                                <td className="px-6 py-4 whitespace-nowrap">
+                                                    <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${bid.status === 'approved' ? 'bg-green-100 text-green-800' :
+                                                        bid.status === 'rejected' ? 'bg-red-100 text-red-800' :
+                                                            'bg-yellow-100 text-yellow-800'
+                                                        }`}>
+                                                        {bid.status}
+                                                    </span>
+                                                </td>
+                                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                                    {bid.createdAt ? new Date(bid.createdAt).toLocaleDateString() : 'N/A'}
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            )}
+                        </div>
+                    </div>
+                )}
+
+                {activeTab === 'analytics' && (
+                    <div>
+                        <h2 className="text-lg font-medium text-gray-900 mb-4">Performance Analytics</h2>
+
+                        {/* Stats Cards */}
+                        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4 mb-8">
+                            <div className="bg-white overflow-hidden shadow rounded-lg">
+                                <div className="px-4 py-5 sm:p-6">
+                                    <dt className="text-sm font-medium text-gray-500 truncate">Total Products</dt>
+                                    <dd className="mt-1 text-3xl font-semibold text-gray-900">{products.length}</dd>
+                                </div>
+                            </div>
+                            <div className="bg-white overflow-hidden shadow rounded-lg">
+                                <div className="px-4 py-5 sm:p-6">
+                                    <dt className="text-sm font-medium text-gray-500 truncate">Total Leads</dt>
+                                    <dd className="mt-1 text-3xl font-semibold text-gray-900">{leads.length}</dd>
+                                </div>
+                            </div>
+                            <div className="bg-white overflow-hidden shadow rounded-lg">
+                                <div className="px-4 py-5 sm:p-6">
+                                    <dt className="text-sm font-medium text-gray-500 truncate">Active Bids</dt>
+                                    <dd className="mt-1 text-3xl font-semibold text-gray-900">{bids.filter(b => b.status === 'active').length}</dd>
+                                </div>
+                            </div>
+                            <div className="bg-white overflow-hidden shadow rounded-lg">
+                                <div className="px-4 py-5 sm:p-6">
+                                    <dt className="text-sm font-medium text-gray-500 truncate">Est. Revenue</dt>
+                                    <dd className="mt-1 text-3xl font-semibold text-gray-900">BWP {leads.length * 50}</dd>
+                                    <p className="text-xs text-gray-400 mt-2">Based on avg lead value</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Charts */}
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+                            <div className="bg-white p-6 rounded-lg shadow">
+                                <h3 className="text-lg font-medium text-gray-900 mb-4">Lead Conversion Funnel</h3>
+                                <div className="h-64 flex justify-center">
+                                    <Chart type="bar" data={{
+                                        labels: ['Views', 'Quotes', 'Leads'],
+                                        datasets: [{
+                                            label: 'Funnel',
+                                            backgroundColor: '#42A5F5',
+                                            data: [products.length * 50, products.length * 10, leads.length] // Mock data based on products
+                                        }]
+                                    }} options={{ maintainAspectRatio: false }} />
+                                </div>
+                            </div>
+                            <div className="bg-white p-6 rounded-lg shadow">
+                                <h3 className="text-lg font-medium text-gray-900 mb-4">Product Categories</h3>
+                                <div className="h-64 flex justify-center">
+                                    <Chart type="pie" data={{
+                                        labels: [...new Set(products.map(p => p.category))],
+                                        datasets: [{
+                                            data: [...new Set(products.map(p => p.category))].map(cat => products.filter(p => p.category === cat).length),
+                                            backgroundColor: ["#FF6384", "#36A2EB", "#FFCE56", "#4BC0C0", "#9966FF"]
+                                        }]
+                                    }} options={{ maintainAspectRatio: false }} />
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 )}
             </div>
-
 
             <Modal
                 isOpen={isProductModalOpen}
@@ -338,6 +634,18 @@ const VendorDashboard = () => {
                     initialData={editingProduct}
                     onSubmit={handleSaveProduct}
                     onCancel={closeModal}
+                />
+            </Modal>
+
+            <Modal
+                isOpen={isBidModalOpen}
+                onClose={() => setIsBidModalOpen(false)}
+                title="Place a Bid"
+            >
+                <BidForm
+                    products={products}
+                    onSubmit={handlePlaceBid}
+                    onCancel={() => setIsBidModalOpen(false)}
                 />
             </Modal>
         </div >

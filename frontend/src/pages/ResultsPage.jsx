@@ -1,12 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useLocation, Link } from 'react-router-dom';
-import { useAuth0 } from '@auth0/auth0-react';
+import { useAuth } from '../context/AuthContext';
 import axios from 'axios';
 import { Toast } from 'primereact/toast';
 
 const ResultsPage = () => {
     const location = useLocation();
-    const { user, getAccessTokenSilently, isAuthenticated } = useAuth0();
+    const { currentUser } = useAuth();
     const [subscription, setSubscription] = useState(null);
     const [selectedForCompare, setSelectedForCompare] = useState([]);
     const [savingQuoteId, setSavingQuoteId] = useState(null);
@@ -63,9 +63,13 @@ const ResultsPage = () => {
 
     useEffect(() => {
         const fetchSubscription = async () => {
-            if (user) {
+            if (currentUser) {
                 try {
-                    const response = await axios.get(`http://localhost:3000/api/subscriptions/status/${user.sub}`);
+                    // Ideally we should send a token here too if the endpoint is protected
+                    const token = await currentUser.getIdToken();
+                    const response = await axios.get(`http://localhost:3000/api/subscriptions/status/${currentUser.uid}`, {
+                        headers: { Authorization: `Bearer ${token}` }
+                    });
                     setSubscription(response.data);
                 } catch (error) {
                     console.error('Error fetching subscription:', error);
@@ -75,7 +79,7 @@ const ResultsPage = () => {
             }
         };
         fetchSubscription();
-    }, [user]);
+    }, [currentUser]);
 
     const handleCompareToggle = (product) => {
         const isSelected = selectedForCompare.find(p => p.id === product.id);
@@ -92,15 +96,15 @@ const ResultsPage = () => {
     };
 
     const handleSaveQuote = async (product) => {
-        if (!isAuthenticated) {
+        if (!currentUser) {
             toast.current.show({ severity: 'info', summary: 'Login Required', detail: 'Please log in to save quotes.', life: 3000 });
             return;
         }
 
         setSavingQuoteId(product.id);
         try {
-            const token = await getAccessTokenSilently();
-            await axios.post(`http://localhost:3000/api/quotes/${user.sub}`, product, {
+            const token = await currentUser.getIdToken();
+            await axios.post(`http://localhost:3000/api/quotes/${currentUser.uid}`, product, {
                 headers: {
                     Authorization: `Bearer ${token}`
                 }

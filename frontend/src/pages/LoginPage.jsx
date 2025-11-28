@@ -45,7 +45,7 @@ const LoginPage = () => {
     };
 
     return (
-        <div className="min-h-screen bg-gray-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
+        <div className="min-h-screen bg-[#F5F1E6] dark:bg-[#003366] flex flex-col justify-center py-12 sm:px-6 lg:px-8 transition-colors duration-300">
             <div className="sm:mx-auto sm:w-full sm:max-w-md">
                 <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
                     Sign in to your account
@@ -59,7 +59,7 @@ const LoginPage = () => {
             </div>
 
             <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
-                <div className="bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10">
+                <div className="bg-white dark:bg-[#002244] py-8 px-4 shadow sm:rounded-lg sm:px-10 transition-colors duration-300">
                     {error && (
                         <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4" role="alert">
                             <span className="block sm:inline">{error}</span>
@@ -119,7 +119,7 @@ const LoginPage = () => {
                                 <div className="w-full border-t border-gray-300" />
                             </div>
                             <div className="relative flex justify-center text-sm">
-                                <span className="px-2 bg-white text-gray-500">
+                                <span className="px-2 bg-white dark:bg-[#002244] text-gray-500 dark:text-gray-300">
                                     Or continue with
                                 </span>
                             </div>
@@ -128,7 +128,7 @@ const LoginPage = () => {
                         <div className="mt-6">
                             <button
                                 onClick={handleGoogleLogin}
-                                className="w-full inline-flex justify-center py-2 px-4 border border-gray-300 rounded-md shadow-sm bg-white text-sm font-medium text-gray-500 hover:bg-gray-50"
+                                className="w-full inline-flex justify-center py-2 px-4 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm bg-white dark:bg-[#002244] text-sm font-medium text-gray-500 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-[#003366] transition-colors duration-300"
                             >
                                 <span className="sr-only">Sign in with Google</span>
                                 <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
@@ -137,6 +137,15 @@ const LoginPage = () => {
                                     />
                                 </svg>
                             </button>
+                        </div>
+
+                        <div className="mt-4 text-center">
+                            <Link
+                                to="/phone-login"
+                                className="text-sm font-medium text-primary hover:text-blue-500"
+                            >
+                                📱 Sign in with phone number
+                            </Link>
                         </div>
                     </div>
                 </div>

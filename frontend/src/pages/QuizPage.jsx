@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth0 } from '@auth0/auth0-react';
+import { useAuth } from '../context/AuthContext';
 import axios from 'axios';
 import CountryCodeSelect from '../components/CountryCodeSelect';
 
 const QuizPage = () => {
     const navigate = useNavigate();
-    const { user, isAuthenticated, getAccessTokenSilently } = useAuth0();
+    const { currentUser } = useAuth();
     const [step, setStep] = useState(1);
     const [loading, setLoading] = useState(false);
 
@@ -38,10 +38,10 @@ const QuizPage = () => {
     // Fetch existing user data on mount
     useEffect(() => {
         const fetchUserData = async () => {
-            if (isAuthenticated && user) {
+            if (currentUser) {
                 try {
-                    const token = await getAccessTokenSilently();
-                    const response = await axios.get(`http://localhost:3000/api/users/${user.sub}`, {
+                    const token = await currentUser.getIdToken();
+                    const response = await axios.get(`http://localhost:3000/api/users/${currentUser.uid}`, {
                         headers: { Authorization: `Bearer ${token}` }
                     });
 
@@ -55,7 +55,7 @@ const QuizPage = () => {
 
                         setFormData(prev => ({
                             ...prev,
-                            fullName: response.data.fullName || user.name || '',
+                            fullName: response.data.fullName || currentUser.displayName || '',
                             phone: response.data.phone || '', // If existing data has full number, it might look weird in the split input.
                             // Ideally we'd parse it. For now, let's just load it.
                             location: response.data.location || ''
@@ -63,16 +63,16 @@ const QuizPage = () => {
                     }
                 } catch (error) {
                     console.error("Error fetching user data for quiz:", error);
-                    // Fallback to Auth0 data
+                    // Fallback to Firebase Auth data
                     setFormData(prev => ({
                         ...prev,
-                        fullName: user.name || ''
+                        fullName: currentUser.displayName || ''
                     }));
                 }
             }
         };
         fetchUserData();
-    }, [isAuthenticated, user, getAccessTokenSilently]);
+    }, [currentUser]);
 
     const handleInputChange = (e) => {
         const { name, value, type, checked } = e.target;
@@ -92,10 +92,10 @@ const QuizPage = () => {
             return;
         }
 
-        if (isAuthenticated && user) {
+        if (currentUser) {
             try {
                 // Background save - don't block UI too long
-                const token = await getAccessTokenSilently();
+                const token = await currentUser.getIdToken();
                 const apiFormData = new FormData();
                 apiFormData.append('fullName', formData.fullName);
                 // Combine code and number
@@ -104,7 +104,7 @@ const QuizPage = () => {
                 apiFormData.append('location', formData.location);
 
                 // We don't await this strictly to block navigation, but good to fire it off
-                axios.put(`http://localhost:3000/api/users/${user.sub}`, apiFormData, {
+                axios.put(`http://localhost:3000/api/users/${currentUser.uid}`, apiFormData, {
                     headers: {
                         'Authorization': `Bearer ${token}`,
                         'Content-Type': 'multipart/form-data'

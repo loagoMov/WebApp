@@ -20,8 +20,10 @@
     "express-oauth2-jwt-bearer": "^1.6.0",
     "express-rate-limit": "^8.2.1",
     "firebase-admin": "^13.6.0",
+    "form-data": "^4.0.5",
     "joi": "^18.0.1",
     "multer": "^2.0.2",
+    "nodemailer": "^7.0.11",
     "xml2js": "^0.6.2"
   },
   "devDependencies": {

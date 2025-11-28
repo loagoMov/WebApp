@@ -1,13 +1,13 @@
 import React, { useEffect } from 'react';
-import { useAuth0 } from '@auth0/auth0-react';
+import { useAuth } from '../context/AuthContext';
 
 const TIMEOUT_MS = 3 * 24 * 60 * 60 * 1000; // 3 days in milliseconds
 
 const InactivityHandler = () => {
-    const { logout, isAuthenticated } = useAuth0();
+    const { logout, currentUser } = useAuth();
 
     useEffect(() => {
-        if (!isAuthenticated) return;
+        if (!currentUser) return;
 
         const checkForInactivity = () => {
             const lastActive = localStorage.getItem('lastActiveTime');
@@ -15,7 +15,8 @@ const InactivityHandler = () => {
                 const now = Date.now();
                 if (now - parseInt(lastActive, 10) > TIMEOUT_MS) {
                     console.log("Session expired due to inactivity.");
-                    logout({ logoutParams: { returnTo: window.location.origin } });
+                    logout();
+                    window.location.href = '/login';
                 }
             }
         };
@@ -43,7 +44,7 @@ const InactivityHandler = () => {
             window.removeEventListener('scroll', updateActivity);
             clearInterval(interval);
         };
-    }, [isAuthenticated, logout]);
+    }, [currentUser, logout]);
 
     return null; // This component renders nothing
 };

@@ -1,27 +1,28 @@
 from fastapi import FastAPI, HTTPException, UploadFile, File
 from pydantic import BaseModel
 from typing import List, Dict, Any, Optional
-from rag_engine import RAGEngine
+from rag_engine import LightweightRAG
 from llm_client import LLMClient
 import shutil
 import os
+import json
 from dotenv import load_dotenv
 
 load_dotenv()
 
 app = FastAPI()
-rag = RAGEngine()
+rag = LightweightRAG()
 llm = LLMClient()
 
 class RecommendationRequest(BaseModel):
     user_profile: Dict[str, Any]
-    query: str # e.g. "I need off-road cover"
+    query: str
     active_vendor_ids: Optional[List[str]] = None
     products: Optional[List[Dict]] = None
 
 @app.get("/")
 def read_root():
-    return {"message": "CoverBots AI Service (RAG Enabled) is running"}
+    return {"message": "CoverBots AI Service (Lightweight RAG) is running"}
 
 @app.post("/ingest")
 async def ingest_policy(vendor_id: str, file: UploadFile = File(...)):
@@ -32,7 +33,6 @@ async def ingest_policy(vendor_id: str, file: UploadFile = File(...)):
             shutil.copyfileobj(file.file, buffer)
             
         # Read text (Simple text/markdown support for MVP)
-        # For PDFs, we would need pypdf or similar
         with open(temp_path, "r", encoding="utf-8", errors="ignore") as f:
             text = f.read()
             
@@ -47,36 +47,50 @@ async def ingest_policy(vendor_id: str, file: UploadFile = File(...)):
 @app.post("/recommend")
 def get_recommendations(request: RecommendationRequest):
     try:
-        # 1. Retrieve relevant chunks (filtering by active vendors)
-        search_results = rag.query(request.query, where_filter={"vendor_id": {"$in": request.active_vendor_ids}} if request.active_vendor_ids else None)
+        # 1. Retrieve relevant policy chunks
+        # We search using the user's query + category to find relevant policy info
+        search_query = f"{request.query} {request.user_profile.get('category', '')}"
+        context_chunks = rag.search(search_query, k=3)
         
-        context_chunks = []
-        if search_results and 'documents' in search_results and search_results['documents']:
-             # Check if the first list in documents is not empty (Chroma returns list of lists)
-             if len(search_results['documents']) > 0 and len(search_results['documents'][0]) > 0:
-                context_chunks = search_results['documents'][0]
-        
-        # 2. Generate answer
-        recommendation_str = llm.generate_recommendation(request.user_profile, context_chunks, request.products)
+        # 2. Generate recommendations with context
+        recommendation_str = llm.generate_recommendation(
+            request.user_profile, 
+            context_chunks,
+            request.products or []
+        )
         
         try:
+            # Try to parse as JSON
             recommendations = json.loads(recommendation_str)
-            return recommendations
+            
+            # Ensure it's a list
+            if not isinstance(recommendations, list):
+                recommendations = [recommendations]
+                
+            return {
+                "recommendations": recommendations,
+                "context_used": context_chunks
+            }
         except json.JSONDecodeError:
-            print(f"Failed to decode JSON: {recommendation_str}")
-            return []place("```json", "").replace("```", "").strip()
-            recommendation_data = json.loads(clean_str)
-        except json.JSONDecodeError:
-            # Fallback if LLM fails to return JSON
-            recommendation_data = []
-            print(f"Failed to parse JSON: {recommendation_str}")
-        return {
-            "recommendations": recommendation_data,
-            "context_used": context_chunks
-        }
+            # Try to clean markdown formatting
+            print(f"Failed to decode JSON, attempting cleanup: {recommendation_str}")
+            clean_str = recommendation_str.replace("```json", "").replace("```", "").strip()
+            try:
+                recommendation_data = json.loads(clean_str)
+                return {
+                    "recommendations": recommendation_data if isinstance(recommendation_data, list) else [recommendation_data],
+                    "context_used": context_chunks
+                }
+            except json.JSONDecodeError:
+                # Fallback
+                print(f"Failed to parse JSON after cleanup: {clean_str}")
+                return {
+                    "recommendations": [],
+                    "context_used": context_chunks,
+                    "error": "Failed to generate valid recommendations",
+                    "raw_response": recommendation_str[:500]
+                }
     except Exception as e:
         import traceback
         traceback.print_exc()
-        print(f"Error generating recommendations: {e}")
         raise HTTPException(status_code=500, detail=str(e))
-

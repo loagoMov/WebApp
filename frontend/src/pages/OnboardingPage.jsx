@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { useAuth0 } from '@auth0/auth0-react';
+import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 
 const OnboardingPage = () => {
-    const { user, getAccessTokenSilently } = useAuth0();
+    const { currentUser } = useAuth();
     const navigate = useNavigate();
     const [formData, setFormData] = useState({
         fullName: '',
@@ -17,11 +17,11 @@ const OnboardingPage = () => {
     useEffect(() => {
         console.log('OnboardingPage mounted');
         const fetchExistingData = async () => {
-            if (user) {
-                // Pre-fill from Auth0
+            if (currentUser) {
+                // Pre-fill from Firebase Auth
                 let initialData = {
-                    fullName: user.name || '',
-                    email: user.email,
+                    fullName: currentUser.displayName || '',
+                    email: currentUser.email,
                     phone: '',
                     location: '',
                     role: 'user'
@@ -29,10 +29,8 @@ const OnboardingPage = () => {
 
                 // Try to fetch from Firestore in case they have partial data
                 try {
-                    // We need to import db and doc/getDoc here or use axios if we want to stick to API
-                    // Let's use the API since we have the token
-                    const token = await getAccessTokenSilently();
-                    const response = await axios.get(`http://localhost:3000/api/users/${user.sub}`, {
+                    const token = await currentUser.getIdToken();
+                    const response = await axios.get(`http://localhost:3000/api/users/${currentUser.uid}`, {
                         headers: { Authorization: `Bearer ${token}` }
                     });
 
@@ -40,7 +38,7 @@ const OnboardingPage = () => {
                         initialData = { ...initialData, ...response.data };
                     }
                 } catch (error) {
-                    // Ignore 404 or other errors, just use Auth0 data
+                    // Ignore 404 or other errors, just use Auth data
                     console.log('No existing profile data found or error fetching it');
                 }
 
@@ -52,7 +50,7 @@ const OnboardingPage = () => {
         };
 
         fetchExistingData();
-    }, [user, getAccessTokenSilently]);
+    }, [currentUser]);
 
     const handleChange = (e) => {
         setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -63,7 +61,7 @@ const OnboardingPage = () => {
         setLoading(true);
 
         try {
-            const token = await getAccessTokenSilently();
+            const token = await currentUser.getIdToken();
 
             // Create FormData object for multipart/form-data request
             const data = new FormData();
@@ -74,8 +72,7 @@ const OnboardingPage = () => {
             // Note: photo upload is not yet implemented in the form, but backend supports it
 
             // We use the update endpoint, which acts as create/update with merge: true
-            // Ensure user.sub is URL encoded to handle characters like '|'
-            await axios.put(`http://localhost:3000/api/users/${encodeURIComponent(user.sub)}`, data, {
+            await axios.put(`http://localhost:3000/api/users/${currentUser.uid}`, data, {
                 headers: {
                     Authorization: `Bearer ${token}`,
                     'Content-Type': 'multipart/form-data'
@@ -97,7 +94,7 @@ const OnboardingPage = () => {
     };
 
     return (
-        <div className="min-h-screen bg-gray-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
+        <div className="min-h-screen bg-[#F5F1E6] dark:bg-[#003366] flex flex-col justify-center py-12 sm:px-6 lg:px-8 transition-colors duration-300">
             <div className="sm:mx-auto sm:w-full sm:max-w-md">
                 <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
                     Welcome to CoverBots!
@@ -108,7 +105,7 @@ const OnboardingPage = () => {
             </div>
 
             <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
-                <div className="bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10">
+                <div className="bg-white dark:bg-[#002244] py-8 px-4 shadow sm:rounded-lg sm:px-10 transition-colors duration-300">
                     <form className="space-y-6" onSubmit={handleSubmit}>
                         <div>
                             <label htmlFor="fullName" className="block text-sm font-medium text-gray-700">

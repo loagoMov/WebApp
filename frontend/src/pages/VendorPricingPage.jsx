@@ -1,12 +1,14 @@
 import React from 'react';
-import { useAuth0 } from '@auth0/auth0-react';
+import { useAuth } from '../context/AuthContext';
+import { useNavigate } from 'react-router-dom';
 
 const VendorPricingPage = () => {
-    const { user, isAuthenticated, loginWithRedirect } = useAuth0();
+    const { currentUser } = useAuth();
+    const navigate = useNavigate();
 
     const handleSubscribe = async (priceId) => {
-        if (!isAuthenticated) {
-            loginWithRedirect();
+        if (!currentUser) {
+            navigate('/vendor/login');
             return;
         }
 
@@ -18,7 +20,7 @@ const VendorPricingPage = () => {
                 },
                 body: JSON.stringify({
                     priceId,
-                    userId: user.sub,
+                    userId: currentUser.uid,
                     userType: 'vendor',
                     successUrl: `${window.location.origin}/subscription/success`,
                     cancelUrl: window.location.href,
@@ -63,7 +65,7 @@ const VendorPricingPage = () => {
     ];
 
     return (
-        <div className="bg-gray-50 min-h-screen py-12 px-4 sm:px-6 lg:px-8">
+        <div className="bg-[#F5F1E6] dark:bg-[#003366] min-h-screen py-12 px-4 sm:px-6 lg:px-8 transition-colors duration-300">
             <div className="max-w-7xl mx-auto text-center">
                 <h2 className="text-3xl font-extrabold text-gray-900 sm:text-4xl">
                     Vendor Partnership Plans
@@ -75,7 +77,7 @@ const VendorPricingPage = () => {
 
             <div className="mt-12 space-y-4 sm:mt-16 sm:space-y-0 sm:grid sm:grid-cols-3 sm:gap-6 lg:max-w-4xl lg:mx-auto xl:max-w-none xl:mx-auto xl:grid-cols-3">
                 {tiers.map((tier) => (
-                    <div key={tier.name} className={`border border-gray-200 rounded-lg shadow-sm divide-y divide-gray-200 bg-white flex flex-col ${tier.recommended ? 'ring-2 ring-primary' : ''}`}>
+                    <div key={tier.name} className={`border border-gray-200 dark:border-gray-700 rounded-lg shadow-sm divide-y divide-gray-200 dark:divide-gray-700 bg-white dark:bg-[#002244] flex flex-col transition-colors duration-300 ${tier.recommended ? 'ring-2 ring-primary' : ''}`}>
                         <div className="p-6">
                             <h3 className="text-lg leading-6 font-medium text-gray-900">{tier.name}</h3>
                             <p className="mt-4">

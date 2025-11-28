@@ -7,11 +7,13 @@
     "dev": "vite",
     "build": "vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "deploy:staging": "vite build && firebase hosting:channel:deploy staging"
   },
   "dependencies": {
     "@auth0/auth0-react": "^2.9.0",
     "axios": "^1.13.2",
+    "browser-image-compression": "^2.0.2",
     "chart.js": "^4.5.1",
     "firebase": "^12.6.0",
     "gsap": "^3.13.0",

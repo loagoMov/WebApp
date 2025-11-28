@@ -1,12 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
-import { useAuth0 } from '@auth0/auth0-react';
+import { useAuth } from '../context/AuthContext';
 import axios from 'axios';
 
 const SubscriptionSuccess = () => {
     const [searchParams] = useSearchParams();
     const navigate = useNavigate();
-    const { user, getAccessTokenSilently } = useAuth0();
+    const { currentUser } = useAuth();
     const [status, setStatus] = useState('verifying');
     const [message, setMessage] = useState('Verifying your payment...');
 
@@ -21,7 +21,7 @@ const SubscriptionSuccess = () => {
             }
 
             try {
-                const token = await getAccessTokenSilently();
+                const token = await currentUser.getIdToken();
                 // We need to know the tier and userType. Ideally, these should be passed in state or retrieved.
                 // For now, we might need to rely on what we stored or just verify the token.
                 // The backend verify-payment needs userId, userType, tier to update the DB.
@@ -39,7 +39,7 @@ const SubscriptionSuccess = () => {
 
                 const response = await axios.post('http://localhost:3000/api/subscriptions/verify-payment', {
                     transToken,
-                    userId: user.sub,
+                    userId: currentUser.uid,
                     userType: userType || 'user', // Default fallback
                     tier: tier || 'user_plus' // Default fallback
                 }, {
@@ -63,10 +63,10 @@ const SubscriptionSuccess = () => {
             }
         };
 
-        if (user) {
+        if (currentUser) {
             verifyPayment();
         }
-    }, [user, searchParams, getAccessTokenSilently, navigate]);
+    }, [currentUser, searchParams, navigate]);
 
     return (
         <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">

@@ -37,6 +37,9 @@ service cloud.firestore {
       // Users can read their own data, admins can read any
       allow read: if isOwner(userId) || isAdmin();
       
+      // Admins can list/query users (needed for pending vendors view)
+      allow list: if isAdmin();
+      
       // Users can update their own data, but cannot change role/status unless admin
       allow update: if isOwner(userId) && 
                        (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['role', 'status']) ||

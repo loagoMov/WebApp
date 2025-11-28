@@ -123,6 +123,46 @@ app.post('/api/recommend', async (req, res) => {
     }
 });
 
+// Policy Upload Proxy
+const multer = require('multer');
+const FormData = require('form-data');
+const fs = require('fs');
+const upload = multer({ dest: 'uploads/' });
+
+app.post('/api/upload-policy', upload.single('file'), async (req, res) => {
+    try {
+        if (!req.file) {
+            return res.status(400).json({ error: 'No file uploaded' });
+        }
+
+        const vendorId = req.body.vendorId;
+        const filePath = req.file.path;
+
+        // Prepare form data for AI Service
+        const formData = new FormData();
+        formData.append('file', fs.createReadStream(filePath), req.file.originalname);
+
+        // Forward to AI Service
+        const aiResponse = await axios.post(`http://localhost:8000/ingest?vendor_id=${vendorId}`, formData, {
+            headers: {
+                ...formData.getHeaders()
+            }
+        });
+
+        // Cleanup temp file
+        fs.unlinkSync(filePath);
+
+        res.json(aiResponse.data);
+    } catch (error) {
+        console.error('Policy Upload Error:', error.message);
+        // Cleanup temp file if exists
+        if (req.file && req.file.path && fs.existsSync(req.file.path)) {
+            fs.unlinkSync(req.file.path);
+        }
+        res.status(500).json({ error: 'Failed to upload policy to AI service' });
+    }
+});
+
 // Error Handling
 app.use((err, req, res, next) => {
     console.error(err.stack);
