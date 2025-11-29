@@ -53,10 +53,8 @@ const VendorDashboard = () => {
     }, [currentUser, vendorStatus]);
 
     const [products, setProducts] = useState([]);
-    const [leads, setLeads] = useState([
-        { id: 1, customer: 'Kabo D.', interest: 'Car Insurance', date: '2023-10-25', status: 'New' },
-        { id: 2, customer: 'Tshepo M.', interest: 'Life Insurance', date: '2023-10-24', status: 'Contacted' },
-    ]);
+    const [leads, setLeads] = useState([]);
+    const [quotes, setQuotes] = useState([]);
     const [isProductModalOpen, setIsProductModalOpen] = useState(false);
     const [editingProduct, setEditingProduct] = useState(null);
 
@@ -82,6 +80,24 @@ const VendorDashboard = () => {
                     const bidsSnap = await getDocs(qBids);
                     const bidsList = bidsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
                     setBids(bidsList);
+
+                    // Fetch Leads (where vendorId matches)
+                    const qLeads = query(collection(db, 'leads'), where('vendorId', '==', currentUser.uid));
+                    const leadsSnap = await getDocs(qLeads);
+                    const leadsList = leadsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                    setLeads(leadsList);
+
+                    // Fetch Quotes (for analytics - quotes that include this vendor's products)
+                    // We'll fetch all quotes and filter by product IDs
+                    const productIds = productsList.map(p => p.id);
+                    if (productIds.length > 0) {
+                        const qQuotes = query(collection(db, 'quotes'));
+                        const quotesSnap = await getDocs(qQuotes);
+                        const quotesList = quotesSnap.docs
+                            .map(doc => ({ id: doc.id, ...doc.data() }))
+                            .filter(quote => productIds.includes(quote.productId || quote.id)); // Adjust based on your schema
+                        setQuotes(quotesList);
+                    }
                 } catch (error) {
                     console.error("Error fetching data:", error);
                     toast.current.show({ severity: 'error', summary: 'Error', detail: 'Failed to load dashboard data.' });
@@ -601,7 +617,7 @@ const VendorDashboard = () => {
                                         datasets: [{
                                             label: 'Funnel',
                                             backgroundColor: '#42A5F5',
-                                            data: [products.length * 50, products.length * 10, leads.length] // Mock data based on products
+                                            data: [products.length, quotes.length, leads.length] // Real data: products viewed, quotes generated, leads converted
                                         }]
                                     }} options={{ maintainAspectRatio: false }} />
                                 </div>

@@ -35,8 +35,15 @@ const Profile = () => {
 
                 if (userSnap.exists()) {
                     const data = userSnap.data();
+
+                    // Construct fullName safely, avoiding "undefined" strings
+                    let fullName = data.fullName || currentUser.displayName || '';
+                    if (!fullName && data.firstName) {
+                        fullName = `${data.firstName} ${data.lastName || ''}`.trim();
+                    }
+
                     setFormData({
-                        fullName: data.fullName || data.firstName + ' ' + (data.lastName || '') || currentUser.displayName || '',
+                        fullName: fullName,
                         email: currentUser.email || data.email || '',
                         countryCode: data.countryCode || '+267',
                         phone: data.phone || '',
