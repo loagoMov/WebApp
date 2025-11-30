@@ -87,17 +87,11 @@ const VendorDashboard = () => {
                     const leadsList = leadsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
                     setLeads(leadsList);
 
-                    // Fetch Quotes (for analytics - quotes that include this vendor's products)
-                    // We'll fetch all quotes and filter by product IDs
-                    const productIds = productsList.map(p => p.id);
-                    if (productIds.length > 0) {
-                        const qQuotes = query(collection(db, 'quotes'));
-                        const quotesSnap = await getDocs(qQuotes);
-                        const quotesList = quotesSnap.docs
-                            .map(doc => ({ id: doc.id, ...doc.data() }))
-                            .filter(quote => productIds.includes(quote.productId || quote.id)); // Adjust based on your schema
-                        setQuotes(quotesList);
-                    }
+                    // Fetch Quotes (for analytics - saved quotes that reference this vendor)
+                    const qQuotes = query(collection(db, 'saved_quotes'), where('vendorId', '==', currentUser.uid));
+                    const quotesSnap = await getDocs(qQuotes);
+                    const quotesList = quotesSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                    setQuotes(quotesList);
                 } catch (error) {
                     console.error("Error fetching data:", error);
                     toast.current.show({ severity: 'error', summary: 'Error', detail: 'Failed to load dashboard data.' });

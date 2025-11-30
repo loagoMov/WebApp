@@ -68,11 +68,20 @@ service cloud.firestore {
     // SAVED QUOTES COLLECTION
     // -------------------------------
     match /saved_quotes/{quoteId} {
-      // Users can only read and delete their own saved quotes
-      allow read, delete: if isAuthenticated() && resource.data.userId == request.auth.uid;
+      // Users can read their own saved quotes
+      // Vendors can read quotes that contain their products (for analytics)
+      allow read: if isAuthenticated() && 
+                     (resource.data.userId == request.auth.uid ||
+                      (isVendor() && resource.data.vendorId == request.auth.uid));
+      
+      // Users can delete their own saved quotes
+      allow delete: if isAuthenticated() && resource.data.userId == request.auth.uid;
       
       // Users can create quotes for themselves
       allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
+      
+      // Users can update their own quotes
+      allow update: if isAuthenticated() && resource.data.userId == request.auth.uid;
     }
     
     // -------------------------------
