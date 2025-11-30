@@ -16,7 +16,8 @@ const Profile = () => {
         countryCode: '+267',
         phone: '',
         location: '',
-        photoURL: ''
+        photoURL: '',
+        dateOfBirth: ''
     });
     const [isEditing, setIsEditing] = useState(false);
     const [uploading, setUploading] = useState(false);
@@ -25,6 +26,17 @@ const Profile = () => {
     const [subscription, setSubscription] = useState({ tier: 'free', status: 'inactive' });
     const [savedQuotes, setSavedQuotes] = useState([]);
     const [loadingQuotes, setLoadingQuotes] = useState(false);
+
+    const calculateAge = (dob) => {
+        const birthDate = new Date(dob);
+        const today = new Date();
+        let age = today.getFullYear() - birthDate.getFullYear();
+        const m = today.getMonth() - birthDate.getMonth();
+        if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
+            age--;
+        }
+        return age;
+    };
 
     useEffect(() => {
         const fetchUserData = async () => {
@@ -48,7 +60,8 @@ const Profile = () => {
                         countryCode: data.countryCode || '+267',
                         phone: data.phone || '',
                         location: data.location || '',
-                        photoURL: data.photoURL || currentUser.photoURL || ''
+                        photoURL: data.photoURL || currentUser.photoURL || '',
+                        dateOfBirth: data.dateOfBirth || ''
                     });
                 } else {
                     // Initialize with Firebase Auth data if no Firestore doc exists
@@ -58,7 +71,8 @@ const Profile = () => {
                         countryCode: '+267',
                         phone: '',
                         location: '',
-                        photoURL: currentUser.photoURL || ''
+                        photoURL: currentUser.photoURL || '',
+                        dateOfBirth: ''
                     });
                 }
 
@@ -182,6 +196,8 @@ const Profile = () => {
                 photoURL = await getDownloadURL(storageRef);
             }
 
+            const age = formData.dateOfBirth ? calculateAge(formData.dateOfBirth) : null;
+
             const userRef = doc(db, 'users', currentUser.uid);
             await updateDoc(userRef, {
                 fullName: formData.fullName,
@@ -189,6 +205,8 @@ const Profile = () => {
                 countryCode: formData.countryCode,
                 location: formData.location,
                 photoURL,
+                dateOfBirth: formData.dateOfBirth,
+                age: age,
                 updatedAt: new Date().toISOString()
             });
 
@@ -334,6 +352,17 @@ const Profile = () => {
                                     </div>
                                 </div>
                                 <div>
+                                    <label htmlFor="dateOfBirth" className="block text-sm font-medium text-gray-700">Date of Birth</label>
+                                    <input
+                                        type="date"
+                                        name="dateOfBirth"
+                                        id="dateOfBirth"
+                                        value={formData.dateOfBirth}
+                                        onChange={handleChange}
+                                        className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-primary focus:border-primary sm:text-sm"
+                                    />
+                                </div>
+                                <div>
                                     <label htmlFor="location" className="block text-sm font-medium text-gray-700">Location</label>
                                     <div className="mt-1 flex rounded-md shadow-sm">
                                         <input
@@ -399,6 +428,10 @@ const Profile = () => {
                                     <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">{formData.phone || 'Not set'}</dd>
                                 </div>
                                 <div className="py-4 sm:py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
+                                    <dt className="text-sm font-medium text-gray-500">Date of Birth</dt>
+                                    <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">{formData.dateOfBirth || 'Not set'}</dd>
+                                </div>
+                                <div className="py-4 sm:py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
                                     <dt className="text-sm font-medium text-gray-500">Location</dt>
                                     <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">{formData.location || 'Not set'}</dd>
                                 </div>
@@ -440,11 +473,11 @@ const Profile = () => {
                                 </div>
                             </dl>
                         )}
-                    </div>
-                </div>
+                    </div >
+                </div >
 
                 {/* Saved Quotes Section */}
-                <div className="bg-white rounded-lg shadow overflow-hidden">
+                < div className="bg-white rounded-lg shadow overflow-hidden" >
                     <div className="px-4 py-5 sm:px-6 bg-gray-50 border-b border-gray-200">
                         <h3 className="text-lg leading-6 font-medium text-gray-900">Saved Quotes</h3>
                         <p className="mt-1 max-w-2xl text-sm text-gray-500">Policies you have saved for later.</p>
@@ -516,9 +549,9 @@ const Profile = () => {
                             </div>
                         )}
                     </div>
-                </div>
-            </div>
-        </div>
+                </div >
+            </div >
+        </div >
     );
 };
 

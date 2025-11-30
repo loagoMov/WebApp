@@ -63,6 +63,7 @@ const VendorDashboard = () => {
     // Bidding State
     const [bids, setBids] = useState([]);
     const [isBidModalOpen, setIsBidModalOpen] = useState(false);
+    const [profileViews, setProfileViews] = useState(0);
 
     // Fetch products and bids from Firestore
     useEffect(() => {
@@ -92,6 +93,11 @@ const VendorDashboard = () => {
                     const quotesSnap = await getDocs(qQuotes);
                     const quotesList = quotesSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
                     setQuotes(quotesList);
+
+                    // Fetch Profile Views count
+                    const qViews = query(collection(db, 'profile_views'), where('vendorId', '==', currentUser.uid));
+                    const viewsSnap = await getDocs(qViews);
+                    setProfileViews(viewsSnap.size);
                 } catch (error) {
                     console.error("Error fetching data:", error);
                     toast.current.show({ severity: 'error', summary: 'Error', detail: 'Failed to load dashboard data.' });
@@ -340,7 +346,7 @@ const VendorDashboard = () => {
                     <div className="bg-white overflow-hidden shadow rounded-lg">
                         <div className="px-4 py-5 sm:p-6">
                             <dt className="text-sm font-medium text-gray-500 truncate">Profile Views</dt>
-                            <dd className="mt-1 text-3xl font-semibold text-gray-900">124</dd>
+                            <dd className="mt-1 text-3xl font-semibold text-gray-900">{profileViews}</dd>
                         </div>
                     </div>
                 </div>

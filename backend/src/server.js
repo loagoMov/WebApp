@@ -53,6 +53,7 @@ app.use('/api/vendors/:vendorId/bids', checkJwt, authorize({ roles: ['vendor', '
 app.use('/api/quotes', checkJwt, require('./routes/quotes'));
 app.use('/api/users', checkJwt, require('./routes/users'));
 app.use('/api/analytics', require('./routes/analytics'));
+app.use('/api/search', require('./routes/search'));
 
 // AI Service Proxy
 // AI Service Proxy

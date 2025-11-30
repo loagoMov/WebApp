@@ -37,8 +37,12 @@ service cloud.firestore {
       // Users can read their own data, admins can read any
       allow read: if isOwner(userId) || isAdmin();
       
-      // Admins can list/query users (needed for pending vendors view)
-      allow list: if isAdmin();
+      // Admins can list/query all users
+      // Anyone can list/query approved vendors (for public vendor discovery)
+      allow list: if isAdmin() || 
+                     (request.query.limit != null && 
+                      resource.data.role == 'vendor' && 
+                      resource.data.status == 'approved');
       
       // Users can update their own data, but cannot change role/status unless admin
       allow update: if isOwner(userId) && 
@@ -147,6 +151,24 @@ service cloud.firestore {
       
       // Vendors can update/delete their own bids, admins can do anything
       allow update, delete: if (isAuthenticated() && resource.data.vendorId == request.auth.uid) || isAdmin();
+    }
+    
+    // -------------------------------
+    // PROFILE VIEWS COLLECTION
+    // -------------------------------
+    match /profile_views/{viewId} {
+      // Anyone can create a profile view record (authenticated or anonymous)
+      allow create: if true;
+      
+      // Vendors can read their own profile view data for analytics
+      allow read: if isAuthenticated() && 
+                     resource.data.vendorId == request.auth.uid;
+      
+      // Admins can read all profile views
+      allow list: if isAdmin();
+      
+      // No updates or deletes allowed (immutable analytics data)
+      allow update, delete: if false;
     }
     
     // Default deny rule for any other collections

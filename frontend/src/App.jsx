@@ -24,6 +24,8 @@ import AboutPage from './pages/AboutPage';
 import ThemeToggle from './components/ThemeToggle';
 import BecomeVendorPage from './pages/BecomeVendorPage';
 import PhoneLoginPage from './pages/PhoneLoginPage';
+import VendorsPage from './pages/VendorsPage';
+import VendorProfile from './pages/VendorProfile';
 
 import { AnimatePresence } from 'motion/react';
 import { useLocation } from 'react-router-dom';
@@ -41,6 +43,8 @@ const AnimatedRoutes = () => {
         <Route path="/about" element={<PageTransition><AboutPage /></PageTransition>} />
         <Route path="/quiz" element={<PageTransition><QuizPage /></PageTransition>} />
         <Route path="/results" element={<PageTransition><ResultsPage /></PageTransition>} />
+        <Route path="/vendors" element={<PageTransition><VendorsPage /></PageTransition>} />
+        <Route path="/vendor/:vendorId" element={<PageTransition><VendorProfile /></PageTransition>} />
         <Route path="/vendor/dashboard" element={<PageTransition><VendorDashboard /></PageTransition>} />
         <Route path="/admin/dashboard" element={
           <PageTransition>

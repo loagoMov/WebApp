@@ -1,0 +1,25 @@
+Fetching all users to find "blanc"...
+
+--- FOUND MATCH ---
+ID: 71kJQ1ypiQR7JUxvey86Wu4qoD13
+Role: vendor
+Status: approved
+Company Name: Blanc.
+Full Data: {
+  "email": "info.blancza@gmail.com",
+  "role": "vendor",
+  "companyName": "Blanc.",
+  "taxId": "686912214",
+  "address": "Nkoyaphiri",
+  "contactPerson": "Loago Montsho",
+  "phone": "+267 74758325",
+  "createdAt": "2025-11-27T10:39:48.016Z",
+  "countryCode": "+267",
+  "location": "Mogoditshane",
+  "photoURL": "https://firebasestorage.googleapis.com/v0/b/coverbots-b9f79.firebasestorage.app/o/profile_photos%2F71kJQ1ypiQR7JUxvey86Wu4qoD13?alt=media&token=73948998-9acf-4bb0-9acd-6b5228f35890",
+  "fullName": "Loago Montsho",
+  "status": "approved",
+  "dateOfBirth": "1990-01-01",
+  "age": 35,
+  "updatedAt": "2025-11-30T18:26:49.260Z"
+}

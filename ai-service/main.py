@@ -94,3 +94,40 @@ def get_recommendations(request: RecommendationRequest):
         import traceback
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/compatibility")
+def calculate_compatibility(request: dict):
+    """
+    Calculate compatibility scores for products based on user profile.
+    Returns a score (0-100) and reasoning for each product.
+    """
+    try:
+        user_profile = request.get("user_profile", {})
+        products = request.get("products", [])
+        
+        if not user_profile or not products:
+            return {"scored_products": []}
+        
+        # Use LLM to score each product
+        scored_products = []
+        for product in products:
+            try:
+                score_result = llm.score_compatibility(user_profile, product)
+                scored_products.append({
+                    "product_id": product.get("id"),
+                    "score": score_result.get("score", 0),
+                    "reasoning": score_result.get("reasoning", "")
+                })
+            except Exception as e:
+                print(f"Error scoring product {product.get('id')}: {e}")
+                scored_products.append({
+                    "product_id": product.get("id"),
+                    "score": 0,
+                    "reasoning": "Unable to calculate compatibility"
+                })
+        
+        return {"scored_products": scored_products}
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))
