@@ -46,19 +46,25 @@ const QuizPage = () => {
                     });
 
                     if (response.data) {
-                        // Split phone if possible, or just set it
-                        // Simple logic: if phone starts with +, try to extract code.
-                        // For MVP, we might just load the whole string into phone if we didn't store it separately.
-                        // Let's assume we store it as a full string. We'll try to parse it or just leave it.
-                        // Better approach for now: just load it all into 'phone' if it exists,
-                        // but for new inputs we use the selector.
+                        // Calculate age from dateOfBirth if available
+                        let calculatedAge = '';
+                        if (response.data.dateOfBirth) {
+                            const birthDate = new Date(response.data.dateOfBirth);
+                            const today = new Date();
+                            let age = today.getFullYear() - birthDate.getFullYear();
+                            const monthDiff = today.getMonth() - birthDate.getMonth();
+                            if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+                                age--;
+                            }
+                            calculatedAge = age.toString();
+                        }
 
                         setFormData(prev => ({
                             ...prev,
                             fullName: response.data.fullName || currentUser.displayName || '',
-                            phone: response.data.phone || '', // If existing data has full number, it might look weird in the split input.
-                            // Ideally we'd parse it. For now, let's just load it.
-                            location: response.data.location || ''
+                            phone: response.data.phone || '',
+                            location: response.data.location || '',
+                            age: calculatedAge || prev.age // Use calculated age or keep existing
                         }));
                     }
                 } catch (error) {
@@ -295,6 +301,11 @@ const QuizPage = () => {
                         onChange={handleInputChange}
                         className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white shadow-sm focus:border-primary focus:ring-primary sm:text-sm p-2 border"
                     />
+                    {formData.age && (
+                        <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                            Auto-filled from your profile
+                        </p>
+                    )}
                 </div>
                 <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Monthly Income (BWP)</label>

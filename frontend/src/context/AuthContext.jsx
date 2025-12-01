@@ -7,7 +7,8 @@ import {
     GoogleAuthProvider,
     signInWithPopup,
     RecaptchaVerifier,
-    signInWithPhoneNumber
+    signInWithPhoneNumber,
+    linkWithPhoneNumber
 } from 'firebase/auth';
 import { auth } from '../config/firebase';
 
@@ -89,6 +90,18 @@ export const AuthProvider = ({ children }) => {
         }
     };
 
+    // Link phone number to existing account
+    const linkPhoneNumber = async (phoneNumber) => {
+        try {
+            const verifier = setupRecaptcha();
+            const confirmationResult = await linkWithPhoneNumber(currentUser, phoneNumber, verifier);
+            return confirmationResult;
+        } catch (error) {
+            console.error('Error linking phone number:', error);
+            throw error;
+        }
+    };
+
     const value = {
         currentUser,
         login,
@@ -97,6 +110,7 @@ export const AuthProvider = ({ children }) => {
         googleLogin,
         sendOTP,
         verifyOTP,
+        linkPhoneNumber,
         setupRecaptcha,
         loading
     };

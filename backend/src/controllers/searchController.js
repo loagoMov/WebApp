@@ -1,7 +1,5 @@
-const admin = require('../config/firebase');
+const { admin, db } = require('../config/firebase');
 const axios = require('axios');
-
-const db = admin.firestore();
 
 // Simple fuzzy match function (Levenshtein-based similarity)
 function fuzzyMatch(query, text) {
@@ -50,6 +48,11 @@ exports.unifiedSearch = async (req, res) => {
             vendorsSnapshot.forEach(doc => {
                 const vendor = { id: doc.id, ...doc.data() };
                 const score = fuzzyMatch(searchQuery, vendor.companyName || '');
+
+                // Debug log for specific vendor
+                if (vendor.companyName && vendor.companyName.toLowerCase().includes('blanc')) {
+                    console.log(`DEBUG: Found vendor 'Blanc'. Score: ${score}, Query: ${searchQuery}`);
+                }
 
                 if (score > 30) { // Threshold for relevance
                     results.vendors.push({

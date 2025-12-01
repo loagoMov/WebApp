@@ -9,7 +9,7 @@ import { Skeleton } from 'primereact/skeleton';
 import imageCompression from 'browser-image-compression';
 
 const Profile = () => {
-    const { currentUser, loading, logout } = useAuth();
+    const { currentUser, loading, logout, linkPhoneNumber } = useAuth();
     const [formData, setFormData] = useState({
         fullName: '',
         email: '',
@@ -26,6 +26,13 @@ const Profile = () => {
     const [subscription, setSubscription] = useState({ tier: 'free', status: 'inactive' });
     const [savedQuotes, setSavedQuotes] = useState([]);
     const [loadingQuotes, setLoadingQuotes] = useState(false);
+
+    // Phone Linking State
+    const [linkingPhone, setLinkingPhone] = useState(false);
+    const [otp, setOtp] = useState('');
+    const [otpSent, setOtpSent] = useState(false);
+    const [verificationId, setVerificationId] = useState(null);
+    const [phoneToLink, setPhoneToLink] = useState('');
 
     const calculateAge = (dob) => {
         const birthDate = new Date(dob);
@@ -271,6 +278,68 @@ const Profile = () => {
         }
     };
 
+    const handleLinkPhone = async () => {
+        if (!formData.phone) {
+            alert("Please enter a phone number in your profile first.");
+            setIsEditing(true);
+            return;
+        }
+
+        // Sanitize and format phone number
+        let phoneNumber = formData.phone.trim();
+
+        // Remove all non-digit characters except the leading +
+        phoneNumber = phoneNumber.replace(/[\s\-\(\)]/g, '');
+
+        // If phone already starts with +, use it as-is (it's already in E.164 format)
+        let fullPhone;
+        if (phoneNumber.startsWith('+')) {
+            fullPhone = phoneNumber;
+        } else {
+            // Remove leading zeros
+            phoneNumber = phoneNumber.replace(/^0+/, '');
+
+            // Add country code
+            let countryCode = formData.countryCode;
+            if (!countryCode.startsWith('+')) {
+                countryCode = '+' + countryCode;
+            }
+
+            fullPhone = `${countryCode}${phoneNumber}`;
+        }
+
+        console.log('Attempting to link phone:', fullPhone); // Debug log
+
+        setPhoneToLink(fullPhone);
+        setLinkingPhone(true);
+
+        try {
+            const confirmationResult = await linkPhoneNumber(fullPhone);
+            setVerificationId(confirmationResult);
+            setOtpSent(true);
+            alert("OTP sent to your phone.");
+        } catch (error) {
+            console.error("Error sending OTP:", error);
+            alert("Failed to send OTP. Please check your phone number format. Expected format: +26771234567");
+            setLinkingPhone(false);
+        }
+    };
+
+    const handleVerifyPhone = async () => {
+        if (!verificationId || !otp) return;
+
+        try {
+            await verificationId.confirm(otp);
+            alert("Phone number linked successfully!");
+            setLinkingPhone(false);
+            setOtpSent(false);
+            setOtp('');
+        } catch (error) {
+            console.error("Error verifying OTP:", error);
+            alert("Invalid OTP. Please try again.");
+        }
+    };
+
     // Render Logic
     return (
         <div className="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
@@ -463,6 +532,65 @@ const Profile = () => {
                                     </dd>
                                 </div>
 
+                                {/* Security Section */}
+                                <div className="py-4 sm:py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
+                                    <dt className="text-sm font-medium text-gray-500">Security</dt>
+                                    <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">
+                                        <div className="flex items-center justify-between">
+                                            <div>
+                                                <p className="font-medium">Linked Providers</p>
+                                                <div className="mt-1 flex space-x-2">
+                                                    {currentUser.providerData.map(provider => (
+                                                        <span key={provider.providerId} className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 capitalize">
+                                                            {provider.providerId.replace('.com', '')}
+                                                        </span>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                            <div>
+                                                {!currentUser.providerData.some(p => p.providerId === 'phone') && (
+                                                    !linkingPhone ? (
+                                                        <button
+                                                            onClick={handleLinkPhone}
+                                                            className="text-primary hover:text-blue-700 font-medium text-sm"
+                                                        >
+                                                            Link Phone Number
+                                                        </button>
+                                                    ) : (
+                                                        <div className="flex flex-col space-y-2">
+                                                            {otpSent ? (
+                                                                <div className="flex space-x-2">
+                                                                    <input
+                                                                        type="text"
+                                                                        value={otp}
+                                                                        onChange={(e) => setOtp(e.target.value)}
+                                                                        placeholder="Enter OTP"
+                                                                        className="shadow-sm focus:ring-primary focus:border-primary block w-24 sm:text-sm border-gray-300 rounded-md"
+                                                                    />
+                                                                    <button
+                                                                        onClick={handleVerifyPhone}
+                                                                        className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md shadow-sm text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
+                                                                    >
+                                                                        Verify
+                                                                    </button>
+                                                                </div>
+                                                            ) : (
+                                                                <span className="text-sm text-gray-500">Sending OTP...</span>
+                                                            )}
+                                                            <button
+                                                                onClick={() => setLinkingPhone(false)}
+                                                                className="text-xs text-red-600 hover:text-red-800 text-right"
+                                                            >
+                                                                Cancel
+                                                            </button>
+                                                        </div>
+                                                    )
+                                                )}
+                                            </div>
+                                        </div>
+                                    </dd>
+                                </div>
+
                                 <div className="py-4 sm:py-5 sm:px-6 flex justify-end">
                                     <button
                                         onClick={() => setIsEditing(true)}
@@ -551,6 +679,8 @@ const Profile = () => {
                     </div>
                 </div >
             </div >
+            {/* Permanent reCAPTCHA container for phone linking */}
+            <div id="recaptcha-container"></div>
         </div >
     );
 };

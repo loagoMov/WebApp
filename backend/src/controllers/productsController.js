@@ -1,5 +1,6 @@
 const { db } = require('../config/firebase');
 const { TIER_LIMITS } = require('../services/subscriptionService');
+const { sendProductUploadEmail } = require('../services/emailService');
 
 const createProduct = async (req, res) => {
     try {
@@ -67,6 +68,21 @@ const createProduct = async (req, res) => {
         };
 
         const docRef = await db.collection('insurance_products').add(newProduct);
+
+        // Send confirmation email to vendor
+        try {
+            await sendProductUploadEmail(
+                { ...newProduct, id: docRef.id },
+                {
+                    companyName: vendorData.companyName,
+                    fullName: vendorData.fullName,
+                    email: vendorData.email
+                }
+            );
+        } catch (emailError) {
+            console.error('Failed to send product upload email:', emailError);
+            // Don't fail the product creation if email fails
+        }
 
         res.status(201).json({
             id: docRef.id,
