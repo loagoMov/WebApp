@@ -14,12 +14,18 @@ const SearchModal = ({ isOpen, onClose }) => {
 
     // Debounce search
     useEffect(() => {
+        if (query.trim().length === 0) {
+            setResults({ vendors: [], products: [] });
+            return;
+        }
+
+        if (query.trim().length <= 2) {
+            // Don't search yet, but don't clear existing results either
+            return;
+        }
+
         const timer = setTimeout(() => {
-            if (query.trim().length > 2) {
-                performSearch();
-            } else {
-                setResults({ vendors: [], products: [] });
-            }
+            performSearch();
         }, 500);
 
         return () => clearTimeout(timer);
@@ -45,6 +51,7 @@ const SearchModal = ({ isOpen, onClose }) => {
                 filters: { type: 'all' }
             }, { headers });
 
+            console.log('DEBUG Frontend: Received search results:', response.data);
             setResults(response.data);
         } catch (error) {
             console.error('Search error:', error);
@@ -61,6 +68,8 @@ const SearchModal = ({ isOpen, onClose }) => {
     if (!isOpen) return null;
 
     const hasResults = results.vendors.length > 0 || results.products.length > 0;
+    console.log('DEBUG: hasResults =', hasResults, 'vendors:', results.vendors, 'products:', results.products);
+
 
     return (
         <div className="fixed inset-0 z-50 overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
@@ -128,42 +137,46 @@ const SearchModal = ({ isOpen, onClose }) => {
                             )}
 
                             {/* Vendors Section */}
-                            {(activeTab === 'all' || activeTab === 'vendors') && results.vendors.length > 0 && (
-                                <div className="mb-6">
-                                    <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Vendors</h3>
-                                    <ul className="divide-y divide-gray-200 bg-white border border-gray-200 rounded-md">
-                                        {results.vendors.map((vendor) => (
-                                            <li
-                                                key={vendor.id}
-                                                className="hover:bg-gray-50 cursor-pointer transition-colors duration-150"
-                                                onClick={() => handleNavigate(`/vendor/${vendor.id}`)}
-                                            >
-                                                <div className="px-4 py-4 sm:px-6">
-                                                    <div className="flex items-center justify-between">
-                                                        <p className="text-sm font-medium text-primary truncate">{vendor.companyName}</p>
-                                                        <div className="ml-2 flex-shrink-0 flex">
-                                                            <p className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
-                                                                Vendor
-                                                            </p>
+                            {(() => {
+                                const shouldShowVendors = (activeTab === 'all' || activeTab === 'vendors') && results.vendors.length > 0;
+                                console.log('DEBUG: Should show vendors?', shouldShowVendors, 'activeTab=', activeTab, 'vendorsCount=', results.vendors.length);
+                                return shouldShowVendors;
+                            })() && (
+                                    <div className="mb-6" style={{ border: '5px solid red', backgroundColor: 'yellow', padding: '20px' }}>
+                                        <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Vendors (DEBUG: THIS SHOULD BE VISIBLE)</h3>
+                                        <ul className="divide-y divide-gray-200 bg-white border border-gray-200 rounded-md">
+                                            {results.vendors.map((vendor) => (
+                                                <li
+                                                    key={vendor.id}
+                                                    className="hover:bg-gray-50 cursor-pointer transition-colors duration-150"
+                                                    onClick={() => handleNavigate(`/vendor/${vendor.id}`)}
+                                                >
+                                                    <div className="px-4 py-4 sm:px-6">
+                                                        <div className="flex items-center justify-between">
+                                                            <p className="text-sm font-medium text-primary truncate">{vendor.companyName}</p>
+                                                            <div className="ml-2 flex-shrink-0 flex">
+                                                                <p className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
+                                                                    Vendor
+                                                                </p>
+                                                            </div>
+                                                        </div>
+                                                        <div className="mt-2 sm:flex sm:justify-between">
+                                                            <div className="sm:flex">
+                                                                <p className="flex items-center text-sm text-gray-500">
+                                                                    <svg className="flex-shrink-0 mr-1.5 h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                                                                    </svg>
+                                                                    {vendor.address || 'No address'}
+                                                                </p>
+                                                            </div>
                                                         </div>
                                                     </div>
-                                                    <div className="mt-2 sm:flex sm:justify-between">
-                                                        <div className="sm:flex">
-                                                            <p className="flex items-center text-sm text-gray-500">
-                                                                <svg className="flex-shrink-0 mr-1.5 h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                                                                </svg>
-                                                                {vendor.address || 'No address'}
-                                                            </p>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </li>
-                                        ))}
-                                    </ul>
-                                </div>
-                            )}
+                                                </li>
+                                            ))}
+                                        </ul>
+                                    </div>
+                                )}
 
                             {/* Products Section */}
                             {(activeTab === 'all' || activeTab === 'products') && results.products.length > 0 && (
@@ -186,8 +199,8 @@ const SearchModal = ({ isOpen, onClose }) => {
                                                             <p className="text-sm font-bold text-gray-900">BWP {product.premium}/mo</p>
                                                             {product.compatibilityScore !== undefined && product.compatibilityScore !== null && (
                                                                 <span className={`mt-1 px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${product.compatibilityScore >= 80 ? 'bg-green-100 text-green-800' :
-                                                                        product.compatibilityScore >= 50 ? 'bg-yellow-100 text-yellow-800' :
-                                                                            'bg-gray-100 text-gray-800'
+                                                                    product.compatibilityScore >= 50 ? 'bg-yellow-100 text-yellow-800' :
+                                                                        'bg-gray-100 text-gray-800'
                                                                     }`}>
                                                                     {product.compatibilityScore}% Match
                                                                 </span>

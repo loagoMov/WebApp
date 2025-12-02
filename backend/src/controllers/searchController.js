@@ -151,6 +151,13 @@ exports.unifiedSearch = async (req, res) => {
             }
         }
 
+        // Debug log the results before sending
+        console.log('DEBUG: Returning search results:', {
+            vendorCount: results.vendors.length,
+            productCount: results.products.length,
+            vendors: results.vendors.map(v => ({ name: v.companyName, score: v.score }))
+        });
+
         res.json(results);
     } catch (error) {
         console.error('Search error:', error);
