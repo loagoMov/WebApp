@@ -1,47 +1,35 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
+import PaymentModal from '../components/PaymentModal';
 
 const VendorPricingPage = () => {
     const { currentUser } = useAuth();
     const navigate = useNavigate();
+    const [selectedTier, setSelectedTier] = useState(null);
+    const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
 
-    const handleSubscribe = async (priceId) => {
+    const handleSubscribe = async (tier) => {
         if (!currentUser) {
             navigate('/vendor/login');
             return;
         }
 
-        try {
-            const response = await fetch('http://localhost:3000/api/subscriptions/create-checkout-session', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    priceId,
-                    userId: currentUser.uid,
-                    userType: 'vendor',
-                    successUrl: `${window.location.origin}/subscription/success`,
-                    cancelUrl: window.location.href,
-                }),
-            });
+        // Open Stripe payment modal
+        setSelectedTier(tier);
+        setIsPaymentModalOpen(true);
+    };
 
-            const { url } = await response.json();
-            if (url) {
-                window.location.href = url;
-            }
-        } catch (error) {
-            console.error('Error creating checkout session:', error);
-            alert('Failed to start subscription process.');
-        }
+    const handleCloseModal = () => {
+        setIsPaymentModalOpen(false);
+        setSelectedTier(null);
     };
 
     const tiers = [
         {
             name: 'Starter',
             price: 'BWP 499/mo',
-            priceId: 'price_bronze_id',
+            tierId: 'vendor_bronze',
             features: ['3 Product Listings', 'Basic Analytics', 'General Search Visibility', 'Limited Bidding'],
             buttonText: 'Start Starter',
             recommended: false
@@ -49,7 +37,7 @@ const VendorPricingPage = () => {
         {
             name: 'Growth',
             price: 'BWP 1299/mo',
-            priceId: 'price_silver_id',
+            tierId: 'vendor_silver',
             features: ['10 Product Listings', 'Priority AI Placement', 'Advanced Analytics', 'Unlimited Bidding'],
             buttonText: 'Go Growth',
             recommended: true
@@ -57,7 +45,7 @@ const VendorPricingPage = () => {
         {
             name: 'Dominion',
             price: 'BWP 2999/mo',
-            priceId: 'price_gold_id',
+            tierId: 'vendor_gold',
             features: ['Unlimited Listings', 'Premium Featured Spots', 'Full Analytics Suite', 'AI Pricing Suggestions', 'Dedicated Support'],
             buttonText: 'Go Dominion',
             recommended: false
@@ -85,7 +73,7 @@ const VendorPricingPage = () => {
                                 <span className="text-sm text-gray-500 block mt-1">Billed Monthly</span>
                             </p>
                             <button
-                                onClick={() => handleSubscribe(tier.priceId)}
+                                onClick={() => handleSubscribe(tier)}
                                 className={`mt-8 block w-full py-3 px-6 border border-transparent rounded-md text-center font-medium ${tier.recommended ? 'bg-primary text-white hover:bg-blue-700' : 'bg-blue-50 text-primary hover:bg-blue-100'}`}
                             >
                                 {tier.buttonText}
@@ -109,6 +97,19 @@ const VendorPricingPage = () => {
                     </div>
                 ))}
             </div>
+
+            {/* Stripe Payment Modal */}
+            {selectedTier && (
+                <PaymentModal
+                    isOpen={isPaymentModalOpen}
+                    onClose={handleCloseModal}
+                    tier={selectedTier.tierId}
+                    tierName={selectedTier.name}
+                    price={selectedTier.price}
+                    user={currentUser}
+                    userType="vendor"
+                />
+            )}
         </div>
     );
 };

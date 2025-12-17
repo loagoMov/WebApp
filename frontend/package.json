@@ -12,6 +12,8 @@
   },
   "dependencies": {
     "@auth0/auth0-react": "^2.9.0",
+    "@stripe/react-stripe-js": "^5.4.1",
+    "@stripe/stripe-js": "^8.5.3",
     "axios": "^1.13.2",
     "browser-image-compression": "^2.0.2",
     "chart.js": "^4.5.1",

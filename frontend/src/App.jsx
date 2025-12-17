@@ -16,8 +16,7 @@ import SubscriptionSuccess from './pages/SubscriptionSuccess';
 import SubscriptionCancel from './pages/SubscriptionCancel';
 import OnboardingPage from './pages/OnboardingPage';
 import ProtectedAdminRoute from './components/ProtectedAdminRoute';
-import LoginPage from './pages/LoginPage';
-import RegisterPage from './pages/RegisterPage';
+import AuthPage from './pages/AuthPage';
 import VendorRegisterPage from './pages/VendorRegisterPage';
 import InactivityHandler from './components/InactivityHandler';
 import AboutPage from './pages/AboutPage';
@@ -26,6 +25,7 @@ import BecomeVendorPage from './pages/BecomeVendorPage';
 import PhoneLoginPage from './pages/PhoneLoginPage';
 import VendorsPage from './pages/VendorsPage';
 import VendorProfile from './pages/VendorProfile';
+import StripeProvider from './context/StripeProvider';
 
 import { AnimatePresence } from 'motion/react';
 import { useLocation } from 'react-router-dom';
@@ -55,14 +55,14 @@ const AnimatedRoutes = () => {
         } />
         <Route path="/vendor/login" element={<PageTransition><VendorLogin /></PageTransition>} />
         <Route path="/admin/login" element={<PageTransition><AdminLogin /></PageTransition>} />
-        <Route path="/login" element={<PageTransition><LoginPage /></PageTransition>} />
+        <Route path="/login" element={<PageTransition><AuthPage /></PageTransition>} />
         <Route path="/profile" element={<PageTransition><Profile /></PageTransition>} />
         <Route path="/pricing" element={<PageTransition><PricingPage /></PageTransition>} />
         <Route path="/vendor/pricing" element={<PageTransition><VendorPricingPage /></PageTransition>} />
         <Route path="/subscription/success" element={<PageTransition><SubscriptionSuccess /></PageTransition>} />
         <Route path="/subscription/cancel" element={<PageTransition><SubscriptionCancel /></PageTransition>} />
         <Route path="/onboarding" element={<PageTransition><OnboardingPage /></PageTransition>} />
-        <Route path="/register" element={<PageTransition><RegisterPage /></PageTransition>} />
+        <Route path="/register" element={<PageTransition><AuthPage /></PageTransition>} />
         <Route path="/vendor/register" element={<PageTransition><VendorRegisterPage /></PageTransition>} />
         <Route path="/vendor/apply" element={<PageTransition><BecomeVendorPage /></PageTransition>} />
         <Route path="/phone-login" element={<PageTransition><PhoneLoginPage /></PageTransition>} />
@@ -73,15 +73,17 @@ const AnimatedRoutes = () => {
 
 function App() {
   return (
-    <div className="flex flex-col min-h-screen">
-      <Navbar />
-      <main className="flex-grow">
-        <AnimatedRoutes />
-        <InactivityHandler />
-        <ThemeToggle />
-      </main>
-      <Footer />
-    </div>
+    <StripeProvider>
+      <div className="flex flex-col min-h-screen">
+        <Navbar />
+        <main className="flex-grow">
+          <AnimatedRoutes />
+          <InactivityHandler />
+          <ThemeToggle />
+        </main>
+        <Footer />
+      </div>
+    </StripeProvider>
   );
 }
 

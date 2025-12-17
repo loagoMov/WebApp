@@ -1,10 +1,13 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
+import PaymentModal from '../components/PaymentModal';
 
 const PricingPage = () => {
     const { currentUser } = useAuth();
     const navigate = useNavigate();
+    const [selectedTier, setSelectedTier] = useState(null);
+    const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
 
     const handleSubscribe = async (tier) => {
         if (!currentUser) {
@@ -12,38 +15,20 @@ const PricingPage = () => {
             return;
         }
 
-        if (tier === 'basic') {
+        if (tier.tierId === 'basic') {
             // Free tier logic (if any) or just redirect
             alert("You are on the Free plan.");
             return;
         }
 
-        try {
-            const response = await fetch('http://localhost:3000/api/subscriptions/initiate-payment', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    tier: tier,
-                    userId: currentUser.uid,
-                    userType: 'user',
-                    email: currentUser.email,
-                    firstName: currentUser.displayName?.split(' ')[0] || '',
-                    lastName: currentUser.displayName?.split(' ').slice(1).join(' ') || ''
-                }),
-            });
+        // Open Stripe payment modal
+        setSelectedTier(tier);
+        setIsPaymentModalOpen(true);
+    };
 
-            const data = await response.json();
-            if (data.paymentURL) {
-                window.location.href = data.paymentURL;
-            } else {
-                alert('Failed to initiate payment: ' + (data.error || 'Unknown error'));
-            }
-        } catch (error) {
-            console.error('Error initiating payment:', error);
-            alert('Failed to start subscription process.');
-        }
+    const handleCloseModal = () => {
+        setIsPaymentModalOpen(false);
+        setSelectedTier(null);
     };
 
     const tiers = [
@@ -118,6 +103,19 @@ const PricingPage = () => {
                     </div>
                 ))}
             </div>
+
+            {/* Stripe Payment Modal */}
+            {selectedTier && (
+                <PaymentModal
+                    isOpen={isPaymentModalOpen}
+                    onClose={handleCloseModal}
+                    tier={selectedTier.tierId}
+                    tierName={selectedTier.name}
+                    price={selectedTier.price}
+                    user={currentUser}
+                    userType="user"
+                />
+            )}
         </div>
     );
 };
