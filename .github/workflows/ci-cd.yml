@@ -50,16 +50,32 @@ jobs:
           cd ai-service
           python -m compileall .
 
+  check-secrets:
+    runs-on: ubuntu-latest
+    outputs:
+      has-gcp-key: ${{ steps.check.outputs.has-key }}
+    steps:
+      - id: check
+        shell: bash
+        env:
+          GCP_SA_KEY: ${{ secrets['GCP_SA_KEY'] }}
+        run: |
+          if [ -n "$GCP_SA_KEY" ]; then
+            echo "has-key=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "has-key=false" >> "$GITHUB_OUTPUT"
+          fi
+
   deploy-staging:
-    needs: [test-frontend, test-backend, test-ai-service]
-    if: github.ref == 'refs/heads/develop' && secrets.GCP_SA_KEY != ''
+    needs: [test-frontend, test-backend, test-ai-service, check-secrets]
+    if: github.ref == 'refs/heads/develop' && needs.check-secrets.outputs.has-gcp-key == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
       - name: Authenticate to Google Cloud
         uses: google-github-actions/auth@v1
         with:
-          credentials_json: ${{ secrets.GCP_SA_KEY }}
+          credentials_json: ${{ secrets['GCP_SA_KEY'] }}
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v2
       - name: Terraform Init
@@ -68,15 +84,15 @@ jobs:
         run: cd infra && terraform apply -auto-approve -var-file="environments/staging.tfvars"
 
   deploy-prod:
-    needs: [test-frontend, test-backend, test-ai-service]
-    if: github.ref == 'refs/heads/main' && secrets.GCP_SA_KEY != ''
+    needs: [test-frontend, test-backend, test-ai-service, check-secrets]
+    if: github.ref == 'refs/heads/main' && needs.check-secrets.outputs.has-gcp-key == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
       - name: Authenticate to Google Cloud
         uses: google-github-actions/auth@v1
         with:
-          credentials_json: ${{ secrets.GCP_SA_KEY }}
+          credentials_json: ${{ secrets['GCP_SA_KEY'] }}
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v2
       - name: Terraform Init
