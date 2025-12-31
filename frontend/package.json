@@ -8,7 +8,8 @@
     "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "deploy:staging": "vite build && firebase hosting:channel:deploy staging"
+    "deploy:staging": "vite build && firebase hosting:channel:deploy staging",
+    "deploy:gh-pages": "vite build && npx gh-pages -d dist"
   },
   "dependencies": {
     "@auth0/auth0-react": "^2.9.0",
