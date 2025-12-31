@@ -289,7 +289,7 @@ const Profile = () => {
         let phoneNumber = formData.phone.trim();
 
         // Remove all non-digit characters except the leading +
-        phoneNumber = phoneNumber.replace(/[\s\-\(\)]/g, '');
+        phoneNumber = phoneNumber.replace(/[\s()-]/g, '');
 
         // If phone already starts with +, use it as-is (it's already in E.164 format)
         let fullPhone;

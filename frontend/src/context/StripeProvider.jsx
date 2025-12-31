@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useMemo } from 'react';
 import { loadStripe } from '@stripe/stripe-js';
 
 const StripeContext = createContext(null);
@@ -12,25 +12,15 @@ export const useStripe = () => {
 };
 
 export const StripeProvider = ({ children }) => {
-    const [stripePromise, setStripePromise] = useState(null);
-    const [error, setError] = useState(null);
-
-    useEffect(() => {
+    const stripePromise = useMemo(() => {
         const publishableKey = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY;
+        if (!publishableKey) return null;
+        return loadStripe(publishableKey);
+    }, []);
 
-        if (!publishableKey) {
-            setError('Stripe publishable key is not configured');
-            console.error('VITE_STRIPE_PUBLISHABLE_KEY is not set in environment variables');
-            return;
-        }
-
-        try {
-            const stripe = loadStripe(publishableKey);
-            setStripePromise(stripe);
-        } catch (err) {
-            setError('Failed to load Stripe');
-            console.error('Error loading Stripe:', err);
-        }
+    const error = useMemo(() => {
+        const publishableKey = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY;
+        return publishableKey ? null : 'Stripe publishable key is not configured';
     }, []);
 
     const value = {

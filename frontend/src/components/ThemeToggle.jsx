@@ -1,24 +1,18 @@
 import React, { useEffect, useState } from 'react';
 
 const ThemeToggle = () => {
-    const [isDark, setIsDark] = useState(true);
+    const [isDark, setIsDark] = useState(() => {
+        const savedTheme = localStorage.getItem('theme');
+        return savedTheme ? savedTheme === 'dark' : true;
+    });
 
     useEffect(() => {
-        // Check local storage or system preference
-        const savedTheme = localStorage.getItem('theme');
-        if (savedTheme) {
-            setIsDark(savedTheme === 'dark');
-            if (savedTheme === 'dark') {
-                document.documentElement.classList.add('dark');
-            } else {
-                document.documentElement.classList.remove('dark');
-            }
-        } else {
-            // Default to dark as per current design
-            setIsDark(true);
+        if (isDark) {
             document.documentElement.classList.add('dark');
+        } else {
+            document.documentElement.classList.remove('dark');
         }
-    }, []);
+    }, [isDark]);
 
     const toggleTheme = () => {
         const newIsDark = !isDark;
@@ -37,8 +31,8 @@ const ThemeToggle = () => {
         <button
             onClick={toggleTheme}
             className={`fixed bottom-4 left-4 z-50 p-3 rounded-full transition-all duration-300 shadow-lg group border-2 ${isDark
-                    ? 'bg-white border-gray-200 hover:bg-gray-100 text-[#003366]'
-                    : 'bg-[#003366] border-[#003366] hover:bg-[#002244] text-white'
+                ? 'bg-white border-gray-200 hover:bg-gray-100 text-[#003366]'
+                : 'bg-[#003366] border-[#003366] hover:bg-[#002244] text-white'
                 }`}
             aria-label="Toggle theme"
         >
